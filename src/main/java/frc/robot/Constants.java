@@ -11,7 +11,7 @@ public final class Constants {
     }
 
     public static final class IntakeConstants {
-        public static final int MotorControllerCANId = 10;
+        public static final int MotorControllerCANId = 11;
     }
 
 }
