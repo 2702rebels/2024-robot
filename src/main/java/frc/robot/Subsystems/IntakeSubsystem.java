@@ -17,7 +17,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
 public class IntakeSubsystem extends SubsystemBase {
-  private CANSparkMax m_intakeMotorController = new CANSparkMax(IntakeConstants.MotorControllerCANId, MotorType.kBrushed);
+  private CANSparkMax m_intakeMotorController = new CANSparkMax(IntakeConstants.MotorControllerCANId, MotorType.kBrushless);
   private SparkPIDController m_pidController;
   private RelativeEncoder m_encoder;
 
