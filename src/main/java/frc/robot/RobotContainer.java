@@ -10,7 +10,6 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.subsystems.IntakeSubsystem;
 
 public class RobotContainer {
-  private IntakeSubsystem m_intake = new IntakeSubsystem();
   private CommandXboxController m_driverController = new CommandXboxController(0);
 
   public RobotContainer() {
@@ -18,7 +17,7 @@ public class RobotContainer {
   }
 
   private void configureBindings() {
-    m_driverController.leftTrigger().onTrue(m_intake.start()).onFalse(m_intake.stop());
+    
   }
 
   public Command getAutonomousCommand() {
