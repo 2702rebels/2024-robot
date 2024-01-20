@@ -6,12 +6,10 @@ package frc.robot;
 
 /** Add your docs here. */
 public final class Constants {
-    public static final class OIConstants {
-        public static final int kDriverControllerPort = 0;
-    }
-
-    public static final class IntakeConstants {
-        public static final int MotorControllerCANId = 11;
+    public static final class ShooterConstants{
+        public static final int kShooterStage1MotorId = 15;
+        public static final int kShooterStage2MotorId = 16;
+        public static final double kTalonCountsToRPM = 600.0 / 2048.0;
     }
 
 }
