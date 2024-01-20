@@ -27,7 +27,7 @@ public class IntakeSubsystem extends SubsystemBase {
     SmartDashboard.putNumber(getName().concat("/MeasuredSpeed"), 0);
 
     m_pidController = m_intakeMotorController.getPIDController();
-    m_pidController.setP(1);
+    m_pidController.setP(0.1);
     m_pidController.setI(0);
     m_pidController.setD(0);
     
