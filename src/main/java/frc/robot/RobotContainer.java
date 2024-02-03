@@ -99,7 +99,7 @@ public class RobotContainer {
         .whileTrue(Commands.run(() -> drive.toggleOrientationLock(0), drive));
 
     controllerDriver.leftTrigger().onTrue(m_intake.start()).onFalse(m_intake.stop());
-    controllerDriver.b().onTrue(m_intake.reverse()).onFalse(m_intake.stop());
+    controllerDriver.y().onTrue(m_intake.reverse()).onFalse(m_intake.stop());
   }
 
   public Command getAutonomousCommand() {
