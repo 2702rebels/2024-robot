@@ -4,7 +4,6 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
-import frc.robot.Constants;
 
 /**
  * Physics sim implementation of module IO.
@@ -27,19 +26,17 @@ public class ModuleIOSim implements ModuleIO {
     driveSim.update(LOOP_PERIOD_SECS);
     turnSim.update(LOOP_PERIOD_SECS);
 
-    inputs.drivePositionMeter =
-        driveSim.getAngularPositionRotations() * Constants.DRIVE_ENCODER_POSITION_FACTOR;
-    inputs.driveVelocityMetersPerSec =
-        driveSim.getAngularPositionRotations() * Constants.DRIVE_ENCODER_VELOCITY_FACTOR;
+    inputs.drivePositionMeters = driveSim.getAngularPositionRotations();
+    inputs.driveVelocityMetersPerSec = driveSim.getAngularPositionRotations();
     inputs.driveAppliedVolts = driveAppliedVolts;
-    inputs.driveCurrentAmps = new double[] {Math.abs(driveSim.getCurrentDrawAmps())};
+    inputs.driveCurrentAmps = Math.abs(driveSim.getCurrentDrawAmps());
 
     inputs.turnPosition = new Rotation2d(turnSim.getAngularPositionRad());
     inputs.turnVelocityRadPerSec = turnSim.getAngularVelocityRadPerSec();
     inputs.turnAppliedVolts = turnAppliedVolts;
-    inputs.turnCurrentAmps = new double[] {Math.abs(turnSim.getCurrentDrawAmps())};
+    inputs.turnCurrentAmps = Math.abs(turnSim.getCurrentDrawAmps());
 
-    inputs.odometryDrivePositionsMeter = new double[] {inputs.drivePositionMeter};
+    inputs.odometryDrivePositionsMeter = new double[] {inputs.drivePositionMeters};
     inputs.odometryTurnPositions = new Rotation2d[] {inputs.turnPosition};
   }
 

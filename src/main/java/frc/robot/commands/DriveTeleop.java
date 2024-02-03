@@ -21,16 +21,16 @@ public class DriveTeleop extends Command {
       new LoggedTunableNumber("Drive/Teleop/Deadband", 0.2);
 
   private static final LoggedTunableNumber slewDirection =
-      new LoggedTunableNumber("Drive/Teleop/Slew/Direction", Constants.SLEW_RATE_DIRECTION);
+      new LoggedTunableNumber("Drive/Teleop/Slew/Direction", Math.PI / 2); // radians per second
 
   private static final LoggedTunableNumber slewAccelerate =
-      new LoggedTunableNumber("Drive/Teleop/Slew/Accelerate", Constants.SLEW_RATE_DECELERATE);
+      new LoggedTunableNumber("Drive/Teleop/Slew/Accelerate", 0.8); // percent per second (1 = 100%)
 
   private static final LoggedTunableNumber slewDecelerate =
-      new LoggedTunableNumber("Drive/Teleop/Slew/Decelerate", Constants.SLEW_RATE_DECELERATE);
+      new LoggedTunableNumber("Drive/Teleop/Slew/Decelerate", 2.0); // percent per second (1 = 100%)
 
   private static final LoggedTunableNumber slewRotation =
-      new LoggedTunableNumber("Drive/Teleop/Slew/Rotation", Constants.SLEW_RATE_ROTATION);
+      new LoggedTunableNumber("Drive/Teleop/Slew/Rotation", 1.5); // percent per second (1 = 100%)
 
   private double actualLinearMagnitude;
   private double actualHeadingRad;
@@ -60,10 +60,10 @@ public class DriveTeleop extends Command {
   public void execute() {
     final var x = xSupplier.getAsDouble();
     final var y = ySupplier.getAsDouble();
-    var rotation = rotationSupplier.getAsDouble();
+    var rotation = MathUtil.applyDeadband(rotationSupplier.getAsDouble(), deadband.get());
 
     // disable orientation if commanded to rotate
-    if (Math.abs(rotation) > Constants.Epsilon && drive.hasOrientationLock()) {
+    if (Math.abs(rotation) > Constants.epsilon && drive.hasOrientationLock()) {
       drive.disableOrientationLock();
     }
 
@@ -97,7 +97,7 @@ public class DriveTeleop extends Command {
     // the maximum constraints; as the speed decreases the factor increases
     // effectively increasing the maximum allowed slew rate
     final var factor =
-        Math.abs(actualLinearMagnitude) < Constants.Epsilon
+        Math.abs(actualLinearMagnitude) < Constants.epsilon
             ? 1000.0
             : Math.abs(1.0 / actualLinearMagnitude);
 
@@ -124,7 +124,7 @@ public class DriveTeleop extends Command {
       actualLinearMagnitude = magnitudeRateLimiter.calculate(linearMagnitude);
       actualHeadingRad = directionRateLimiter.calculate(inputHeadingRad, factor);
     } else if (headingDelta > sectorR) {
-      if (Math.abs(actualLinearMagnitude) > Constants.Epsilon) {
+      if (Math.abs(actualLinearMagnitude) > Constants.epsilon) {
         // keep heading
         actualLinearMagnitude = magnitudeRateLimiter.calculate(0.0);
       } else {

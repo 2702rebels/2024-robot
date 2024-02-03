@@ -6,6 +6,8 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import java.util.HashMap;
+import java.util.function.BiConsumer;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
@@ -70,6 +72,8 @@ public class Robot extends LoggedRobot {
     // start AdvantageKit logger
     Logger.start();
 
+    startCommandLogging();
+
     robotContainer = new RobotContainer();
   }
 
@@ -125,4 +129,23 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void testExit() {}
+
+  /** Initiates logging of active command names. */
+  private void startCommandLogging() {
+    final var counts = new HashMap<String, Integer>();
+    BiConsumer<Command, Boolean> logger =
+        (Command command, Boolean active) -> {
+          final var name = command.getName();
+          final var code = Integer.toHexString(command.hashCode());
+          final var count = counts.getOrDefault(name, 0) + (active ? 1 : -1);
+          counts.put(name, count);
+          Logger.recordOutput("Commands/" + name + "_" + code, active);
+          Logger.recordOutput("CommandsAll/" + name, count > 0);
+        };
+
+    final var scheduler = CommandScheduler.getInstance();
+    scheduler.onCommandInitialize((Command command) -> logger.accept(command, true));
+    scheduler.onCommandFinish((Command command) -> logger.accept(command, false));
+    scheduler.onCommandInterrupt((Command command) -> logger.accept(command, false));
+  }
 }

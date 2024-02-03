@@ -3,7 +3,6 @@ package frc.robot.subsystems.drive;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import frc.robot.Constants;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.Misc;
 import org.littletonrobotics.junction.Logger;
@@ -13,9 +12,6 @@ public class Module {
   private final ModuleIOInputsAutoLogged inputs = new ModuleIOInputsAutoLogged();
   private final int index;
   private final Rotation2d angularOffset;
-
-  private double lastPositionMeters = 0.0; // used for delta calculation
-  private SwerveModulePosition[] positionDeltas = new SwerveModulePosition[] {};
 
   private static final LoggedTunableNumber driveP = new LoggedTunableNumber("Drive/Module/Drive P");
   private static final LoggedTunableNumber driveI = new LoggedTunableNumber("Drive/Module/Drive I");
@@ -29,35 +25,20 @@ public class Module {
   private static final LoggedTunableNumber turnFF = new LoggedTunableNumber("Drive/Module/Turn FF");
 
   static {
-    switch (Constants.currentMode) {
-      case REAL:
-      case REPLAY:
-        driveP.initDefault(Constants.DRIVE_MOTOR_P);
-        driveI.initDefault(Constants.DRIVE_MOTOR_I);
-        driveD.initDefault(Constants.DRIVE_MOTOR_D);
-        driveFF.initDefault(Constants.DRIVE_MOTOR_FF);
-        turnP.initDefault(Constants.TURN_MOTOR_P);
-        turnI.initDefault(Constants.TURN_MOTOR_I);
-        turnD.initDefault(Constants.TURN_MOTOR_D);
-        turnFF.initDefault(Constants.TURN_MOTOR_FF);
-        break;
-      case SIM:
-        driveP.initDefault(0.0);
-        driveI.initDefault(0.0);
-        driveD.initDefault(0.0);
-        driveFF.initDefault(0.0);
-        turnP.initDefault(0.0);
-        turnI.initDefault(0.0);
-        turnD.initDefault(0.0);
-        turnFF.initDefault(0.0);
-        break;
-    }
+    driveP.initDefault(DriveConstants.moduleFactors.driveMotor().kP());
+    driveI.initDefault(DriveConstants.moduleFactors.driveMotor().kI());
+    driveD.initDefault(DriveConstants.moduleFactors.driveMotor().kD());
+    driveFF.initDefault(DriveConstants.moduleFactors.driveMotor().kFF());
+    turnP.initDefault(DriveConstants.moduleFactors.turnMotor().kP());
+    turnI.initDefault(DriveConstants.moduleFactors.turnMotor().kI());
+    turnD.initDefault(DriveConstants.moduleFactors.turnMotor().kD());
+    turnFF.initDefault(DriveConstants.moduleFactors.turnMotor().kFF());
   }
 
-  public Module(ModuleIO io, int index, double chassisAngularOffsetRadians) {
+  public Module(ModuleIO io, int index, Rotation2d chassisAngularOffset) {
     this.io = io;
     this.index = index;
-    angularOffset = Rotation2d.fromRadians(chassisAngularOffsetRadians);
+    angularOffset = chassisAngularOffset;
 
     setBrakeMode(true);
   }
@@ -68,11 +49,10 @@ public class Module {
    */
   public void updateInputs() {
     io.updateInputs(inputs);
+    Logger.processInputs("Drive/Module" + Integer.toString(index), inputs);
   }
 
   public void periodic() {
-    Logger.processInputs("Drive/Module" + Integer.toString(index), inputs);
-
     final var callerId = hashCode();
 
     // update controllers if tunable numbers have changed
@@ -89,25 +69,12 @@ public class Module {
         || turnFF.hasChanged(callerId)) {
       io.configureTurnPID(turnP.get(), turnI.get(), turnD.get(), turnFF.get());
     }
-
-    // TODO: use constant size buffers to minimize allocations
-    // calculate position deltas for odometry
-    final var deltaCount =
-        Math.min(inputs.odometryDrivePositionsMeter.length, inputs.odometryTurnPositions.length);
-
-    positionDeltas = new SwerveModulePosition[deltaCount];
-    for (var i = 0; i < deltaCount; i++) {
-      final var positionMeters = inputs.odometryDrivePositionsMeter[i];
-      final var angle = inputs.odometryTurnPositions[i];
-      positionDeltas[i] = new SwerveModulePosition(positionMeters - lastPositionMeters, angle);
-      lastPositionMeters = positionMeters;
-    }
   }
 
   /** Runs the module with the specified setpoint state. Returns the optimized state. */
   public SwerveModuleState runSetpoint(SwerveModuleState state) {
     // optimize state based on current angle
-    final var optimizedState = adjustAndOptimize(state, getAngle());
+    final var optimizedState = adjustAndOptimize(state, getAngle(), angularOffset);
 
     // command driving and turning SPARK MAX towards their respective setpoints
     io.setDriveVelocity(optimizedState.speedMetersPerSecond);
@@ -115,9 +82,9 @@ public class Module {
     // TODO: support for second-order kinematics
     // var desiredOmega = optimizedState.omega.getRadians(); // radians per second
     // var turningFF =
-    //     Constants.TURN_MOTOR_NOMINAL_VOLTAGE
+    //     DriveConstants.drivetrainConfig.turnMotor().nominalVoltage()
     //         * desiredOmega
-    //         / Constants.TURN_MOTOR_MAX_ANGULAR_VELOCITY;
+    //         / DriveConstants.drivetrainConfig.turnMotorMaxAngularSpeed();
     // io.setTurnAngleAndFF(optimizedState.angle.getRadians(), turningFF);
 
     io.setTurnAngle(optimizedState.angle.getRadians());
@@ -136,6 +103,19 @@ public class Module {
     io.setTurnBrakeMode(enabled);
   }
 
+  /** Returns recently recorded sequence of positions fusing both drive and turn odometries. */
+  public SwerveModulePosition[] getPositions() {
+    final var minOdometryPositions =
+        Math.min(inputs.odometryDrivePositionsMeter.length, inputs.odometryTurnPositions.length);
+    final var positions = new SwerveModulePosition[minOdometryPositions];
+    for (var i = 0; i < minOdometryPositions; i++) {
+      positions[i] =
+          new SwerveModulePosition(
+              inputs.odometryDrivePositionsMeter[i], inputs.odometryTurnPositions[i]);
+    }
+    return positions;
+  }
+
   /** Returns the current turn angle of the module. */
   public Rotation2d getAngle() {
     return inputs.turnPosition;
@@ -148,7 +128,7 @@ public class Module {
 
   /** Returns the current drive position of the module in meters. */
   public double getPositionMeter() {
-    return inputs.drivePositionMeter;
+    return inputs.drivePositionMeters;
   }
 
   /** Returns the current drive velocity of the module in meters/sec. */
@@ -166,11 +146,6 @@ public class Module {
     return new SwerveModuleState(getVelocityMetersPerSec(), getAdjustedAngle());
   }
 
-  /** Returns the module position deltas received this cycle. */
-  public SwerveModulePosition[] getPositionDeltas() {
-    return positionDeltas;
-  }
-
   /** Resets encoders position. */
   public void resetEncoders() {
     io.resetEncoders();
@@ -181,8 +156,8 @@ public class Module {
    * numerical stability and reduce allocations. This also adjusts the desired state to account for
    * the angular offset.
    */
-  private SwerveModuleState adjustAndOptimize(
-      SwerveModuleState desiredState, Rotation2d currentAngle) {
+  private static SwerveModuleState adjustAndOptimize(
+      SwerveModuleState desiredState, Rotation2d currentAngle, Rotation2d angularOffset) {
     final var desiredAngle = desiredState.angle.getRadians() + angularOffset.getRadians();
 
     final var delta = Math.abs(desiredAngle - currentAngle.getRadians());

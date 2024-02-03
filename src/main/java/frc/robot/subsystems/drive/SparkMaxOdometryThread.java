@@ -15,10 +15,7 @@ package frc.robot.subsystems.drive;
 
 import edu.wpi.first.wpilibj.Notifier;
 import frc.robot.Constants;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.DoubleSupplier;
 
 /**
@@ -28,10 +25,9 @@ import java.util.function.DoubleSupplier;
  * blocking thread. A Notifier thread is used to gather samples with consistent timing.
  */
 public class SparkMaxOdometryThread {
-  private List<DoubleSupplier> signals = new ArrayList<>();
-  private List<Queue<Double>> queues = new ArrayList<>();
-
+  private final DriveOdometryTracker tracker;
   private final Notifier notifier;
+
   private static SparkMaxOdometryThread instance = null;
 
   public static SparkMaxOdometryThread getInstance() {
@@ -42,31 +38,17 @@ public class SparkMaxOdometryThread {
   }
 
   private SparkMaxOdometryThread() {
+    tracker = DriveOdometryTracker.getInstance();
     notifier = new Notifier(this::periodic);
     notifier.setName("SparkMaxOdometryThread");
-    notifier.startPeriodic(1.0 / Constants.ODOMETRY_FREQUENCY);
+    notifier.startPeriodic(1.0 / Constants.odometryFrequency);
   }
 
   public Queue<Double> registerSignal(DoubleSupplier signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(100);
-    Drive.odometryLock.lock();
-    try {
-      signals.add(signal);
-      queues.add(queue);
-    } finally {
-      Drive.odometryLock.unlock();
-    }
-    return queue;
+    return tracker.registerSignal(signal);
   }
 
   private void periodic() {
-    Drive.odometryLock.lock();
-    try {
-      for (var i = 0; i < signals.size(); i++) {
-        queues.get(i).offer(signals.get(i).getAsDouble());
-      }
-    } finally {
-      Drive.odometryLock.unlock();
-    }
+    tracker.update();
   }
 }

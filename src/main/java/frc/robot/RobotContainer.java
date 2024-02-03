@@ -3,6 +3,7 @@ package frc.robot;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
@@ -11,6 +12,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIOPigeon1;
 import frc.robot.subsystems.drive.ModuleIO;
@@ -34,39 +36,20 @@ public class RobotContainer {
         // real robot, instantiate hardware IO implementations
         drive =
             new Drive(
-                new GyroIOPigeon1(CanID.GYRO_CONTROLLER, true),
-                new ModuleIOSparkMax(CanID.FRONT_LEFT_DRIVE, CanID.FRONT_LEFT_TURN),
-                new ModuleIOSparkMax(CanID.FRONT_RIGHT_DRIVE, CanID.FRONT_RIGHT_TURN),
-                new ModuleIOSparkMax(CanID.REAR_LEFT_DRIVE, CanID.REAR_LEFT_TURN),
-                new ModuleIOSparkMax(CanID.REAR_RIGHT_DRIVE, CanID.REAR_RIGHT_TURN),
-                Constants.CHASSIS_ANGULAR_OFFSET_RAD,
-                false);
+                new GyroIOPigeon1(CanID.GYRO_CONTROLLER, false),
+                (Integer index) ->
+                    new ModuleIOSparkMax(
+                        DriveConstants.moduleConfigs[index], DriveConstants.drivetrainConfig));
         break;
 
       case SIM:
         // sim robot, instantiate physics sim IO implementations
-        drive =
-            new Drive(
-                new GyroIO() {},
-                new ModuleIOSim(),
-                new ModuleIOSim(),
-                new ModuleIOSim(),
-                new ModuleIOSim(),
-                Constants.CHASSIS_ANGULAR_OFFSET_RAD,
-                false);
+        drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
         break;
 
       default:
         // replayed robot, disable IO implementations
-        drive =
-            new Drive(
-                new GyroIO() {},
-                new ModuleIO() {},
-                new ModuleIO() {},
-                new ModuleIO() {},
-                new ModuleIO() {},
-                Constants.CHASSIS_ANGULAR_OFFSET_RAD,
-                false);
+        drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
         break;
     }
 
@@ -86,8 +69,8 @@ public class RobotContainer {
     drive.setDefaultCommand(
         DriveCommands.joystickDrive(
             drive,
-            () -> -controllerDriver.getLeftY(),
             () -> -controllerDriver.getLeftX(),
+            () -> -controllerDriver.getLeftY(),
             () -> -controllerDriver.getRightX()));
 
     controllerDriver.x().onTrue(Commands.runOnce(drive::stopWithX, drive));
@@ -95,9 +78,10 @@ public class RobotContainer {
         .b()
         .onTrue(
             Commands.runOnce(
-                    () ->
-                        drive.setPose(
-                            new Pose2d(drive.getPose().getTranslation(), new Rotation2d())),
+                    () -> {
+                      drive.setPose(new Pose2d(new Translation2d(), new Rotation2d()));
+                      drive.reset();
+                    },
                     drive)
                 .ignoringDisable(true));
 

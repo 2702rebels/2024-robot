@@ -1,6 +1,5 @@
 package frc.robot.subsystems.drive;
 
-import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.ctre.phoenix.sensors.PigeonIMU.PigeonState;
 import com.ctre.phoenix.sensors.WPI_PigeonIMU;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -14,7 +13,7 @@ public class GyroIOPigeon1 implements GyroIO {
   private final double sign;
 
   public GyroIOPigeon1(int deviceNumber, boolean flipped) {
-    pigeon = new WPI_PigeonIMU(new TalonSRX(deviceNumber));
+    pigeon = new WPI_PigeonIMU(deviceNumber);
     sign = flipped ? -1.0 : 1.0;
     pigeon.setYaw(0.0);
     yawPositionQueue =
@@ -24,7 +23,7 @@ public class GyroIOPigeon1 implements GyroIO {
   @Override
   public void updateInputs(GyroIOInputs inputs) {
     inputs.connected = pigeon.getState() == PigeonState.Ready;
-    inputs.yawPosition = Rotation2d.fromDegrees(sign * pigeon.getAngle());
+    inputs.yawPosition = Rotation2d.fromDegrees(sign * pigeon.getYaw());
     inputs.yawVelocityRadPerSec = Units.degreesToRadians(pigeon.getRate());
 
     inputs.odometryYawPositions =

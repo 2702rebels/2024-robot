@@ -18,10 +18,7 @@ import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.ParentDevice;
 import frc.robot.Constants;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -34,10 +31,11 @@ import java.util.concurrent.locks.ReentrantLock;
  * time synchronization.
  */
 public class PhoenixOdometryThread extends Thread {
+  private final DriveOdometryTracker tracker;
+
   // prevents conflicts when registering signals
   private final Lock signalsLock = new ReentrantLock();
   private BaseStatusSignal[] signals = new BaseStatusSignal[0];
-  private final List<Queue<Double>> queues = new ArrayList<>();
   private boolean isCANFD = false;
 
   private static PhoenixOdometryThread instance = null;
@@ -50,27 +48,26 @@ public class PhoenixOdometryThread extends Thread {
   }
 
   private PhoenixOdometryThread() {
+    tracker = DriveOdometryTracker.getInstance();
     setName("PhoenixOdometryThread");
     setDaemon(true);
     start();
   }
 
   public Queue<Double> registerSignal(ParentDevice device, StatusSignal<Double> signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(100);
+    isCANFD = CANBus.isNetworkFD(device.getNetwork());
+
     signalsLock.lock();
-    Drive.odometryLock.lock();
     try {
-      isCANFD = CANBus.isNetworkFD(device.getNetwork());
-      BaseStatusSignal[] newSignals = new BaseStatusSignal[signals.length + 1];
+      // create new signal placeholder
+      final var newSignals = new BaseStatusSignal[signals.length + 1];
       System.arraycopy(signals, 0, newSignals, 0, signals.length);
       newSignals[signals.length] = signal;
-      signals = newSignals;
-      queues.add(queue);
+
+      return tracker.registerSignal(() -> signal.getValueAsDouble());
     } finally {
       signalsLock.unlock();
-      Drive.odometryLock.unlock();
     }
-    return queue;
   }
 
   @Override
@@ -80,13 +77,13 @@ public class PhoenixOdometryThread extends Thread {
       signalsLock.lock();
       try {
         if (isCANFD) {
-          BaseStatusSignal.waitForAll(2.0 / Constants.ODOMETRY_FREQUENCY, signals);
+          BaseStatusSignal.waitForAll(2.0 / Constants.odometryFrequency, signals);
         } else {
           // "waitForAll" does not support blocking on multiple
           // signals with a bus that is not CAN FD, regardless
           // of Pro licensing; no reasoning for this behavior
           // is provided by the documentation
-          Thread.sleep((long) (1000.0 / Constants.ODOMETRY_FREQUENCY));
+          Thread.sleep((long) (1000.0 / Constants.odometryFrequency));
           if (signals.length > 0) BaseStatusSignal.refreshAll(signals);
         }
       } catch (InterruptedException e) {
@@ -96,14 +93,7 @@ public class PhoenixOdometryThread extends Thread {
       }
 
       // save new data to queues
-      Drive.odometryLock.lock();
-      try {
-        for (var i = 0; i < signals.length; i++) {
-          queues.get(i).offer(signals[i].getValueAsDouble());
-        }
-      } finally {
-        Drive.odometryLock.unlock();
-      }
+      tracker.update();
     }
   }
 }
