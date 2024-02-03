@@ -23,4 +23,8 @@ public final class Constants {
 
   /** Odometry frequency (Hz) */
   public static final int odometryFrequency = 200;
+
+  public static final class IntakeConstants {
+    public static final int MotorControllerCANId = 11;
+  }
 }

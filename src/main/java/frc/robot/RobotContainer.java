@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.DriveCommands;
+import frc.robot.subsystems.IntakeSubsystem;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -23,6 +24,8 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 public class RobotContainer {
   // subsystems
   private final Drive drive;
+
+  private final IntakeSubsystem m_intake = new IntakeSubsystem();
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -94,6 +97,8 @@ public class RobotContainer {
     controllerDriver
         .rightBumper()
         .whileTrue(Commands.run(() -> drive.toggleOrientationLock(0), drive));
+
+    controllerDriver.leftTrigger().onTrue(m_intake.start()).onFalse(m_intake.stop());
   }
 
   public Command getAutonomousCommand() {
