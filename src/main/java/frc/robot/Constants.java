@@ -9,6 +9,7 @@ public final class Constants {
     public static final class ShooterConstants{
         public static final int kShooterStage1MotorId = 15;
         public static final int kShooterStage2MotorId = 16;
+        public static final int kShooterFeed = 13;
         public static final double kTalonCountsToRPM = 600.0 / 2048.0;
     }
 

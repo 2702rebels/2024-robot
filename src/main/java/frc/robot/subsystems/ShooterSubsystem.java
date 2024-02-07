@@ -6,6 +6,8 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonFX;
+import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -14,6 +16,8 @@ import frc.robot.Constants.ShooterConstants;
 public class ShooterSubsystem extends SubsystemBase {
   TalonFX flywheel = new TalonFX(ShooterConstants.kShooterStage1MotorId);
   TalonFX topRoller = new TalonFX(ShooterConstants.kShooterStage2MotorId);
+
+  private CANSparkMax m_feederMotorController = new CANSparkMax(ShooterConstants.kShooterFeed, MotorType.kBrushless);
 
   /** Creates a new ShooterSubsystem. */
   public ShooterSubsystem() {
@@ -32,6 +36,7 @@ public class ShooterSubsystem extends SubsystemBase {
 
     SmartDashboard.putNumber("ConfigBottomRollerRPM", 3000);
     SmartDashboard.putNumber("ConfigTopRollerRPM", 3000);
+    SmartDashboard.putNumber("ConfigFeedPercent", 0.5);
   }
 
   @Override
@@ -44,18 +49,23 @@ public class ShooterSubsystem extends SubsystemBase {
   }
 
   public void shoot() {
-    System.out.println("We shooting boiz");
     double bottomRollerRPM = SmartDashboard.getNumber("ConfigBottomRollerRPM", 3000);
     flywheel.set(ControlMode.Velocity, bottomRollerRPM / ShooterConstants.kTalonCountsToRPM);
-
+    
     double topRollerRPM = SmartDashboard.getNumber("ConfigTopRollerRPM", 3000);
     topRoller.set(ControlMode.Velocity, topRollerRPM / ShooterConstants.kTalonCountsToRPM);
+    
+    double feedPercent = SmartDashboard.getNumber("ConfigFeedPercent", 0.5);
+    m_feederMotorController.set(feedPercent);
+    
+    System.out.println("Shooter: Shooting.");
   }
 
   public void stop() {
-    System.out.println("Now we ain't");
     flywheel.set(ControlMode.PercentOutput, 0);
     topRoller.set(ControlMode.PercentOutput, 0);
+    m_feederMotorController.stopMotor();
+    System.out.println("Shooter: Stopped.");
   }
 
 }
