@@ -16,6 +16,11 @@ public final class Misc {
   }
 
   /** Returns angle in radians clamped to (-PI, PI] range. */
+  public static Rotation2d clampAngle(Rotation2d angle) {
+    return Rotation2d.fromRadians(clampAngle(angle.getRadians()));
+  }
+
+  /** Returns angle in radians clamped to (-PI, PI] range. */
   public static double clampAngle(double angleRadians) {
     while (angleRadians <= -Math.PI) {
       angleRadians += TwoPI;

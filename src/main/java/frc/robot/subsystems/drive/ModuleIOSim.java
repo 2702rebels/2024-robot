@@ -36,7 +36,7 @@ public class ModuleIOSim implements ModuleIO {
     inputs.turnAppliedVolts = turnAppliedVolts;
     inputs.turnCurrentAmps = Math.abs(turnSim.getCurrentDrawAmps());
 
-    inputs.odometryDrivePositionsMeter = new double[] {inputs.drivePositionMeters};
+    inputs.odometryDrivePositionsMeters = new double[] {inputs.drivePositionMeters};
     inputs.odometryTurnPositions = new Rotation2d[] {inputs.turnPosition};
   }
 

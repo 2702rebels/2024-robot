@@ -82,8 +82,8 @@ public class LoggedTunableNumber {
    *     otherwise.
    */
   public boolean hasChanged(int id) {
-    double currentValue = get();
-    Double lastValue = lastHasChangedValues.get(id);
+    var currentValue = get();
+    var lastValue = lastHasChangedValues.get(id);
     if (lastValue == null || currentValue != lastValue) {
       lastHasChangedValues.put(id, currentValue);
       return true;

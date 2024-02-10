@@ -53,7 +53,7 @@ public final class DriveConstants {
           Units.inchesToMeters(3.0), // wheel diameter
           Units.inchesToMeters(21.5), // width X
           Units.inchesToMeters(21.5), // width Y
-          4.0,
+          5.0, // max linear speed
           driveMotorConfig,
           turnMotorConfig);
 
@@ -65,18 +65,22 @@ public final class DriveConstants {
     new ModuleConfig(CanID.MOTOR_DRIVE_RR, CanID.MOTOR_TURN_RR, true),
   };
 
-  /** Drive motor kFF based on the wheel free speed + 10% overshoot to be pulled down by kP */
-  private static final double driveMotorFF = 1.1 * (1.0 / (drivetrainConfig.wheelFreeSpeedRps()));
-
-  /** Swerve module tunable factors (configured defaults) */
+  /**
+   * Swerve module tunable factors (configured defaults).
+   *
+   * <p>Drive motor FF kV/kA factors are taken from https://reca.lc/drive. Note that kA is
+   * irrelevant since we are not using accelation in the FF calculations.
+   */
   public static final ModuleTunableFactors moduleFactors =
       switch (Constants.currentMode) {
         case REAL, REPLAY -> new ModuleTunableFactors(
-            new MotorTunableFactors(0.1, 0.0, 0.0, driveMotorFF),
-            new MotorTunableFactors(2.5, 0.0, 0.0, 0.0));
+            new MotorTunableFactorsPID(0.1, 0.0, 0.0, 0.0),
+            new MotorTunableFactorsPID(2.5, 0.0, 0.0, 0.0),
+            new MotorTunableFactorsFF(0.0, 2.4, 0.0));
         default -> new ModuleTunableFactors(
-            new MotorTunableFactors(0.0, 0.0, 0.0, 0.0),
-            new MotorTunableFactors(0.0, 0.0, 0.0, 0.0));
+            new MotorTunableFactorsPID(0.0, 0.0, 0.0, 0.0),
+            new MotorTunableFactorsPID(0.0, 0.0, 0.0, 0.0),
+            new MotorTunableFactorsFF(0.0, 0.0, 0.0));
       };
 
   /** Angular positions of FL, FR, RL, RR modules with respect to the chassis */
@@ -95,6 +99,9 @@ public final class DriveConstants {
     new Translation2d(-drivetrainConfig.trackWidthY / 2.0, -drivetrainConfig.trackWidthX / 2.0)
   };
 
+  /** Determines whether to use omega FF (second-order kinematics) */
+  public static final boolean useSecondOrderKinematics = false;
+
   /** Drive kinematics */
   public static final SwerveDriveKinematics kinematics =
       new SwerveDriveKinematics(moduleTranslations);
@@ -111,9 +118,9 @@ public final class DriveConstants {
       return Math.hypot(trackWidthX / 2.0, trackWidthY / 2.0);
     }
 
-    /** Wheel free speed (rotations per second) */
-    public double wheelFreeSpeedRps() {
-      return (driveEncoderPositionFactor() * driveMotor.freeSpeedRpm) / 60.0;
+    /** Wheel free speed (meters per second) */
+    public double wheelFreeSpeed() {
+      return driveEncoderVelocityFactor() * driveMotor.freeSpeedRpm;
     }
 
     /** Maximum commandable chassis angular speed */
@@ -143,8 +150,7 @@ public final class DriveConstants {
 
     /** Maximum commandable angular velocity for a turn motor */
     public double turnMotorMaxAngularSpeed() {
-      return (turnEncoderPositionFactor() * turnMotor.freeSpeedRpm())
-          / (60.0 * turnMotor.reductionFactor());
+      return (turnEncoderVelocityFactor() * turnMotor.freeSpeedRpm()) / turnMotor.reductionFactor();
     }
   }
 
@@ -153,12 +159,17 @@ public final class DriveConstants {
 
   /** Tunable factors of a swerve module. */
   public record ModuleTunableFactors(
-      MotorTunableFactors driveMotor, MotorTunableFactors turnMotor) {}
+      MotorTunableFactorsPID driveMotor,
+      MotorTunableFactorsPID turnMotor,
+      MotorTunableFactorsFF driveMotorFF) {}
 
   /** Configurable parameters of a drive or turn motor. */
   public record MotorConfig(
       double reductionFactor, double freeSpeedRpm, int currentLimit, int nominalVoltage) {}
 
   /** Tunable factors (PID) of a drive or turn motor. */
-  public record MotorTunableFactors(double kP, double kI, double kD, double kFF) {}
+  public record MotorTunableFactorsPID(double kP, double kI, double kD, double kFF) {}
+
+  /** Tunable factors (FF) of a drive motor. */
+  public record MotorTunableFactorsFF(double kS, double kV, double kA) {}
 }

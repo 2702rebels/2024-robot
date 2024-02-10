@@ -8,9 +8,16 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.DoubleSupplier;
+import org.littletonrobotics.junction.AutoLog;
+import org.littletonrobotics.junction.Logger;
 
 /** Maintains shared queues for high-frequency odometry readings. */
 public class DriveOdometryTracker {
+  @AutoLog
+  public static class DriveOdometryInputs {
+    public double[] timestamps = new double[] {};
+  }
+
   private static final int maxQueueCapacity = 16;
 
   private final Lock lock = new ReentrantLock();
@@ -42,7 +49,10 @@ public class DriveOdometryTracker {
 
   /** Runs update on all the signals. */
   public void update() {
-    final var timestamp = Timer.getFPGATimestamp();
+    // IMPORTANT: we are grabbing true timestamp here, i.e. directly from FPGA,
+    // these are not "replayable" in AK and therefore must be recorded as inputs,
+    // see code in updateInputs below
+    final var timestamp = Logger.getRealTimestamp() / 1E6;
     lock.lock();
     try {
       timestamps.offer(timestamp);
@@ -54,21 +64,20 @@ public class DriveOdometryTracker {
     }
   }
 
-  /** Reads current timestamps and runs loggable inputs updates. */
-  public double[] read(Runnable updater) {
+  /** Updates the set of loggable inputs. */
+  public void updateInputs(DriveOdometryInputs inputs, Runnable updater) {
     lock.lock();
     try {
       // read timestamps and clear the queue
-      var timestamps = this.timestamps.stream().mapToDouble(Double::valueOf).toArray();
-      this.timestamps.clear();
+      inputs.timestamps = timestamps.stream().mapToDouble(Double::valueOf).toArray();
+      timestamps.clear();
 
-      // fake sim timestamps
-      if (timestamps.length == 0) {
-        timestamps = new double[] {Timer.getFPGATimestamp()};
+      // fake timestamps in simulation
+      if (inputs.timestamps.length == 0) {
+        inputs.timestamps = new double[] {Timer.getFPGATimestamp()};
       }
 
       updater.run();
-      return timestamps;
     } finally {
       lock.unlock();
     }

@@ -34,10 +34,15 @@ public class ModuleIOSparkMax implements ModuleIO {
   private final Queue<Double> drivePositionQueue;
   private final Queue<Double> turnPositionQueue;
 
+  private final Rotation2d angularOffset;
+
   private final SparkPIDController drivePIDController;
   private final SparkPIDController turnPIDController;
 
-  public ModuleIOSparkMax(ModuleConfig module, DrivetrainConfig drivetrain) {
+  public ModuleIOSparkMax(
+      ModuleConfig module, Rotation2d angularOffset, DrivetrainConfig drivetrain) {
+    this.angularOffset = angularOffset;
+
     driveSparkMax = new CANSparkMax(module.driveCanId(), MotorType.kBrushless);
     turnSparkMax = new CANSparkMax(module.turnCanId(), MotorType.kBrushless);
 
@@ -118,10 +123,11 @@ public class ModuleIOSparkMax implements ModuleIO {
     // status 6 - Duty Cycle Absolute Encoder Velocity / Frequency
 
     final var odometryFramePeriod = (int) (1000.0 / Constants.odometryFrequency);
+    final var velocityFramePeriod = (int) (1000.0 * Constants.cyclePeriodSeconds);
 
     // drive motor
     driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus0, 100);
-    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus1, 100);
+    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus1, velocityFramePeriod);
     driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus2, odometryFramePeriod);
     driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus3, 65535);
     driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus4, 65535);
@@ -135,7 +141,7 @@ public class ModuleIOSparkMax implements ModuleIO {
     turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus3, 65535);
     turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus4, 65535);
     turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus5, odometryFramePeriod);
-    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus6, 100);
+    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus6, velocityFramePeriod);
 
     drivePositionQueue =
         SparkMaxOdometryThread.getInstance().registerSignal(driveEncoder::getPosition);
@@ -156,17 +162,18 @@ public class ModuleIOSparkMax implements ModuleIO {
     inputs.driveAppliedVolts = driveSparkMax.getAppliedOutput() * driveSparkMax.getBusVoltage();
     inputs.driveCurrentAmps = driveSparkMax.getOutputCurrent();
 
-    inputs.turnPosition = Rotation2d.fromRadians(turnAbsoluteEncoder.getPosition());
+    inputs.turnPosition =
+        Rotation2d.fromRadians(turnAbsoluteEncoder.getPosition() - angularOffset.getRadians());
     inputs.turnVelocityRadPerSec = turnAbsoluteEncoder.getVelocity();
     inputs.turnAppliedVolts = turnSparkMax.getAppliedOutput() * turnSparkMax.getBusVoltage();
     inputs.turnCurrentAmps = turnSparkMax.getOutputCurrent();
 
-    inputs.odometryDrivePositionsMeter =
+    inputs.odometryDrivePositionsMeters =
         drivePositionQueue.stream().mapToDouble(Double::valueOf).toArray();
 
     inputs.odometryTurnPositions =
         turnPositionQueue.stream()
-            .map((Double value) -> Rotation2d.fromRadians(value))
+            .map((Double value) -> Rotation2d.fromRadians(value - angularOffset.getRadians()))
             .toArray(Rotation2d[]::new);
 
     drivePositionQueue.clear();
@@ -215,12 +222,17 @@ public class ModuleIOSparkMax implements ModuleIO {
   }
 
   @Override
+  public void setDriveVelocity(double speedMetersPerSecond, double ff) {
+    drivePIDController.setReference(speedMetersPerSecond, ControlType.kVelocity, 0, ff);
+  }
+
+  @Override
   public void setTurnAngle(double angleRadians) {
     turnPIDController.setReference(angleRadians, ControlType.kPosition);
   }
 
   @Override
-  public void setTurnAngleAndFF(double angleRadians, double ff) {
+  public void setTurnAngle(double angleRadians, double ff) {
     turnPIDController.setReference(angleRadians, ControlType.kPosition, 0, ff);
   }
 
