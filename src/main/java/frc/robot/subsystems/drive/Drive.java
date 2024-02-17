@@ -1,6 +1,7 @@
 package frc.robot.subsystems.drive;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
 import com.pathplanner.lib.util.PathPlannerLogging;
 import com.pathplanner.lib.util.ReplanningConfig;
@@ -17,7 +18,9 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 import frc.robot.RobotState;
+import frc.robot.util.LocalADStarAK;
 import frc.robot.util.LoggedTunableNumber;
+import frc.robot.util.Misc;
 import java.util.function.Function;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -28,6 +31,13 @@ public class Drive extends SubsystemBase {
   private final Module[] modules = new Module[4]; // FL, FR, RL, RR
 
   private final DriveOdometryTracker odometryTracker;
+  private final DriveOdometryInputsAutoLogged odometryInputs = new DriveOdometryInputsAutoLogged();
+
+  // maintain a pre-allocated buffer to populate with recently currently sampled
+  // set of module positions on each iteration of odometry update, this cuts down
+  // on the number of array allocations required to construct odometry readings
+  private final SwerveDriveWheelPositions[] sampledWheelPositions;
+
   private final RobotState robotState;
 
   private final ChassisSpeeds ZeroChassisSpeeds = new ChassisSpeeds();
@@ -38,6 +48,26 @@ public class Drive extends SubsystemBase {
         new SwerveModuleState(0, Rotation2d.fromDegrees(-45)),
         new SwerveModuleState(0, Rotation2d.fromDegrees(45)),
       };
+
+  // measured module states
+  private final SwerveModuleState[] measuredStates =
+      new SwerveModuleState[] {
+        new SwerveModuleState(),
+        new SwerveModuleState(),
+        new SwerveModuleState(),
+        new SwerveModuleState(),
+      };
+
+  // deltas between commanded setpoints and measured module states
+  private final SwerveModuleState[] deltaStates =
+      new SwerveModuleState[] {
+        new SwerveModuleState(),
+        new SwerveModuleState(),
+        new SwerveModuleState(),
+        new SwerveModuleState(),
+      };
+
+  private static final SwerveModuleState[] emptyStates = new SwerveModuleState[] {};
 
   private static final LoggedTunableNumber orientationP =
       new LoggedTunableNumber("Drive/Orientation/P", 0.5);
@@ -50,10 +80,26 @@ public class Drive extends SubsystemBase {
   private boolean stopX;
 
   public Drive(GyroIO gyroIO, Function<Integer, ModuleIO> moduleBuilder) {
+    // maximum number of attainable samples depends on the odometry frequency
+    // and the period of the robot main cycle (plus one for the boundary case)
+    final var samplesMax =
+        (int) Math.ceil(Constants.cyclePeriodSeconds * Constants.odometryFrequency) + 1;
+
+    sampledWheelPositions = new SwerveDriveWheelPositions[samplesMax];
+    for (var i = 0; i < sampledWheelPositions.length; ++i) {
+      sampledWheelPositions[i] =
+          new SwerveDriveWheelPositions(
+              new SwerveModulePosition[] {
+                new SwerveModulePosition(),
+                new SwerveModulePosition(),
+                new SwerveModulePosition(),
+                new SwerveModulePosition(),
+              });
+    }
+
     // initialize swerve modules
-    for (var index = 0; index < modules.length; ++index) {
-      modules[index] =
-          new Module(moduleBuilder.apply(index), index, DriveConstants.moduleAngularOffsets[index]);
+    for (var i = 0; i < modules.length; ++i) {
+      modules[i] = new Module(moduleBuilder.apply(i), i, DriveConstants.moduleAngularOffsets[i]);
     }
 
     this.gyroIO = gyroIO;
@@ -78,12 +124,13 @@ public class Drive extends SubsystemBase {
                 && DriverStation.getAlliance().get() == Alliance.Red,
         this);
 
-    // Pathfinding.setPathfinder(new LocalADStarAK());
+    Pathfinding.setPathfinder(new LocalADStarAK());
     PathPlannerLogging.setLogActivePathCallback(
         (activePath) -> {
           Logger.recordOutput(
               "Odometry/Trajectory", activePath.toArray(new Pose2d[activePath.size()]));
         });
+
     PathPlannerLogging.setLogTargetPoseCallback(
         (targetPose) -> {
           Logger.recordOutput("Odometry/TrajectorySetpoint", targetPose);
@@ -98,47 +145,90 @@ public class Drive extends SubsystemBase {
     gyroIO.updateInputs(gyroInputs);
     Logger.processInputs("Drive/Gyro", gyroInputs);
 
+    var index = 0;
     for (var module : modules) {
       module.updateInputs();
+
+      final var moduleState = module.getState();
+      measuredStates[index].angle = moduleState.angle;
+      measuredStates[index].speedMetersPerSecond = moduleState.speedMetersPerSecond;
+      index++;
     }
   }
 
   /** Updates robot state based from odometry observations. */
   private void updateOdometry() {
-    final var timestamps = odometryTracker.read(this::updateOdometryInputs);
+    odometryTracker.updateInputs(odometryInputs, this::updateOdometryInputs);
+    Logger.processInputs("Drive/Odometry", odometryInputs);
+
+    final var timestamps = odometryInputs.timestamps;
     final var yawPositions = gyroInputs.odometryYawPositions;
 
-    final var modulePositions = new SwerveModulePosition[modules.length][];
-    var modulePositionsCount = Integer.MAX_VALUE;
-    for (var i = 0; i < modules.length; i++) {
-      modulePositions[i] = modules[i].getPositions();
-      modulePositionsCount = Math.min(modulePositionsCount, modulePositions[i].length);
-    }
-
-    var index = 0;
-    while (true) {
-      if (index >= timestamps.length
-          || gyroInputs.connected && index >= yawPositions.length
-          || index >= modulePositionsCount) {
-        break;
+    // modules are sampled atomically with the timestamps,
+    // we should have the same number of sampled entries for
+    // each module as the number of collected timestamps
+    final var count = Math.min(timestamps.length, sampledWheelPositions.length);
+    for (var i = 0; i < modules.length; ++i) {
+      final var sampledPositions = modules[i].getSampledPositionsMeters();
+      final var sampledAngles = modules[i].getSampledAngles();
+      for (var t = 0; t < count; ++t) {
+        final var position = sampledWheelPositions[t].positions[i];
+        position.distanceMeters = sampledPositions[t];
+        position.angle = sampledAngles[t];
       }
-
-      final var timestamp = timestamps[index];
-      final var yaw = gyroInputs.connected ? yawPositions[index] : null;
-      final var wheelPositions =
-          new SwerveDriveWheelPositions(
-              new SwerveModulePosition[] {
-                modulePositions[0][index],
-                modulePositions[1][index],
-                modulePositions[2][index],
-                modulePositions[3][index]
-              });
-
-      robotState.addOdometryObservation(
-          new RobotState.OdometryObservation(wheelPositions, yaw, timestamp));
-
-      index++;
     }
+
+    for (var t = 0; t < count; ++t) {
+      robotState.addOdometryObservation(
+          sampledWheelPositions[t], gyroInputs.connected ? yawPositions[t] : null, timestamps[t]);
+    }
+  }
+
+  /**
+   * Calculates angular velocities for individual modules using second-order kinematics equations
+   * under the assumption of no acceleration.
+   *
+   * <p>Note that there is no need for complex matrix/vector multiplication machinery, since we are
+   * assuming constant chassis velocities, i.e. robot's linear and angular accelerations are
+   * considered to be zero this. As such we are reduced to a situation where module acceleration is
+   * just a centripetal acceleration.
+   */
+  private static double[] calculateAngularVelocity(
+      ChassisSpeeds chassisSpeeds, SwerveModuleState[] moduleStates) {
+    final var angularVelocities = new double[moduleStates.length];
+    final var omegaSq = Math.pow(chassisSpeeds.omegaRadiansPerSecond, 2);
+
+    for (var i = 0; i < moduleStates.length; ++i) {
+      final var rx = DriveConstants.moduleTranslations[i].getX();
+      final var ry = DriveConstants.moduleTranslations[i].getY();
+      final var speed = moduleStates[i].speedMetersPerSecond;
+      final var angle = moduleStates[i].angle;
+
+      angularVelocities[i] =
+          (omegaSq / speed) * (angle.getSin() * rx - angle.getCos() * ry)
+              - chassisSpeeds.omegaRadiansPerSecond;
+    }
+
+    return angularVelocities;
+  }
+
+  /** Computes delta between setpoint and current state to be used for telemetry and debugging. */
+  private void updateModuleDelta(int index, SwerveModuleState setpointState) {
+    final var setpointAngle = Misc.clampAngle(setpointState.angle.getRadians());
+    final var measuredAngle = Misc.clampAngle(measuredStates[index].angle.getRadians());
+    final var setpointSpeed = setpointState.speedMetersPerSecond;
+    final var measuredSpeed = measuredStates[index].speedMetersPerSecond;
+
+    var deltaAngle = setpointAngle - measuredAngle;
+    var deltaSpeed = setpointSpeed - measuredSpeed;
+
+    if (Math.abs(deltaAngle) > Math.PI * 0.5) {
+      deltaAngle = Misc.clampAngle(setpointAngle - measuredAngle + Math.PI);
+      deltaSpeed = -setpointSpeed - measuredSpeed;
+    }
+
+    deltaStates[index].speedMetersPerSecond = deltaSpeed;
+    deltaStates[index].angle = Rotation2d.fromRadians(deltaAngle);
   }
 
   public void periodic() {
@@ -162,8 +252,8 @@ public class Drive extends SubsystemBase {
       }
 
       // log empty setpoint states when disabled
-      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
-      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
+      Logger.recordOutput("Drive/SwerveStates/Setpoints", emptyStates);
+      Logger.recordOutput("Drive/SwerveStates/Deltas", emptyStates);
     }
   }
 
@@ -174,6 +264,7 @@ public class Drive extends SubsystemBase {
    */
   public void runVelocity(ChassisSpeeds speeds) {
     SwerveModuleState[] setpointStates;
+    double[] setpointAngularVelocities = null;
 
     // if all commanded velocities are effectively zero and
     // robot must be stopped in X wheel arrangement, use custom setpoints
@@ -184,23 +275,35 @@ public class Drive extends SubsystemBase {
       setpointStates = stopXstates;
     } else {
       // calculate module setpoints
-      final var discreteSpeeds = ChassisSpeeds.discretize(speeds, 0.02);
+      final var discreteSpeeds = ChassisSpeeds.discretize(speeds, Constants.cyclePeriodSeconds);
       setpointStates = DriveConstants.kinematics.toSwerveModuleStates(discreteSpeeds);
       SwerveDriveKinematics.desaturateWheelSpeeds(
           setpointStates, DriveConstants.drivetrainConfig.maxLinearSpeed());
+
+      if (DriveConstants.useSecondOrderKinematics) {
+        setpointAngularVelocities = calculateAngularVelocity(discreteSpeeds, setpointStates);
+      }
     }
 
     // send setpoints to modules
-    final var optimizedSetpointStates = new SwerveModuleState[4];
-    for (var i = 0; i < modules.length; i++) {
-      // the module returns the optimized state, useful for logging
-      optimizedSetpointStates[i] = modules[i].runSetpoint(setpointStates[i]);
+    for (var i = 0; i < modules.length; ++i) {
+      modules[i].runSetpoint(
+          setpointStates[i],
+          setpointAngularVelocities != null ? setpointAngularVelocities[i] : 0.0);
+
+      updateModuleDelta(i, setpointStates[i]);
     }
 
     // log chassis speeds and setpoint states
     Logger.recordOutput("Drive/Speeds", speeds);
-    Logger.recordOutput("SwerveStates/Setpoints", setpointStates);
-    Logger.recordOutput("SwerveStates/SetpointsOptimized", optimizedSetpointStates);
+    Logger.recordOutput("Drive/SwerveStates/Setpoints", setpointStates);
+    Logger.recordOutput("Drive/SwerveStates/Deltas", deltaStates);
+
+    if (DriveConstants.useSecondOrderKinematics) {
+      if (setpointAngularVelocities != null) {
+        Logger.recordOutput("Drive/SwerveStates/Omegas", setpointAngularVelocities);
+      }
+    }
   }
 
   /** Stops the drive. */
@@ -246,13 +349,9 @@ public class Drive extends SubsystemBase {
   }
 
   /** Returns the module states (turn angles and drive velocities) for all of the modules */
-  @AutoLogOutput(key = "SwerveStates/Measured")
+  @AutoLogOutput(key = "Drive/SwerveStates/Measured")
   private SwerveModuleState[] getModuleStates() {
-    final var states = new SwerveModuleState[4];
-    for (var i = 0; i < modules.length; i++) {
-      states[i] = modules[i].getState();
-    }
-    return states;
+    return measuredStates;
   }
 
   /** Returns the current odometry rotation */

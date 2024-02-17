@@ -42,7 +42,9 @@ public class RobotContainer {
                 new GyroIOPigeon1(CanID.GYRO_CONTROLLER, false),
                 (Integer index) ->
                     new ModuleIOSparkMax(
-                        DriveConstants.moduleConfigs[index], DriveConstants.drivetrainConfig));
+                        DriveConstants.moduleConfigs[index],
+                        DriveConstants.moduleAngularOffsets[index],
+                        DriveConstants.drivetrainConfig));
         break;
 
       case SIM:
@@ -76,7 +78,7 @@ public class RobotContainer {
             () -> -controllerDriver.getLeftY(),
             () -> -controllerDriver.getRightX()));
 
-    controllerDriver.x().onTrue(Commands.runOnce(drive::stopWithX, drive));
+    controllerDriver.x().whileTrue(Commands.run(drive::stopWithX));
     controllerDriver
         .b()
         .onTrue(
@@ -84,20 +86,15 @@ public class RobotContainer {
                     () -> {
                       drive.setPose(new Pose2d(new Translation2d(), new Rotation2d()));
                       drive.reset();
-                    },
-                    drive)
+                    })
                 .ignoringDisable(true));
 
     // orientation locks
     controllerDriver
         .leftBumper()
-        .whileTrue(
-            Commands.run(() -> drive.toggleOrientationLock(Units.degreesToRadians(180)), drive));
+        .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
 
-    controllerDriver
-        .rightBumper()
-        .whileTrue(Commands.run(() -> drive.toggleOrientationLock(0), drive));
-
+    controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
     controllerDriver.leftTrigger().onTrue(m_intake.start()).onFalse(m_intake.stop());
     controllerDriver.y().onTrue(m_intake.reverse()).onFalse(m_intake.stop());
   }

@@ -16,7 +16,7 @@ public interface ModuleIO {
     public double turnAppliedVolts = 0.0;
     public double turnCurrentAmps = 0.0;
 
-    public double[] odometryDrivePositionsMeter = new double[] {};
+    public double[] odometryDrivePositionsMeters = new double[] {};
     public Rotation2d[] odometryTurnPositions = new Rotation2d[] {};
   }
 
@@ -44,11 +44,14 @@ public interface ModuleIO {
   /** Sets the drive motor target velocity via PID. */
   public default void setDriveVelocity(double speedMetersPerSecond) {}
 
+  /** Sets the drive motor target velocity via PID and FF. */
+  public default void setDriveVelocity(double speedMetersPerSecond, double FF) {}
+
   /** Sets the turn motor target angle via PID. */
   public default void setTurnAngle(double angleRadians) {}
 
-  /** Sets the turn motor target angle and FF via PID. */
-  public default void setTurnAngleAndFF(double angleRadians, double ff) {}
+  /** Sets the turn motor target angle via PID and FF. */
+  public default void setTurnAngle(double angleRadians, double ff) {}
 
   /** Resets encoders position. */
   public default void resetEncoders() {}

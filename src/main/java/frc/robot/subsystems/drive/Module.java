@@ -1,5 +1,6 @@
 package frc.robot.subsystems.drive;
 
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
@@ -12,12 +13,20 @@ public class Module {
   private final ModuleIOInputsAutoLogged inputs = new ModuleIOInputsAutoLogged();
   private final int index;
   private final Rotation2d angularOffset;
+  private final SwerveModuleState moduleState;
+  private final SwerveModulePosition modulePosition;
 
   private static final LoggedTunableNumber driveP = new LoggedTunableNumber("Drive/Module/Drive P");
   private static final LoggedTunableNumber driveI = new LoggedTunableNumber("Drive/Module/Drive I");
   private static final LoggedTunableNumber driveD = new LoggedTunableNumber("Drive/Module/Drive D");
   private static final LoggedTunableNumber driveFF =
       new LoggedTunableNumber("Drive/Module/Drive FF");
+  private static final LoggedTunableNumber driveS =
+      new LoggedTunableNumber("Drive/Module/Drive kS");
+  private static final LoggedTunableNumber driveV =
+      new LoggedTunableNumber("Drive/Module/Drive kV");
+  private static final LoggedTunableNumber driveA =
+      new LoggedTunableNumber("Drive/Module/Drive kA");
 
   private static final LoggedTunableNumber turnP = new LoggedTunableNumber("Drive/Module/Turn P");
   private static final LoggedTunableNumber turnI = new LoggedTunableNumber("Drive/Module/Turn I");
@@ -29,16 +38,27 @@ public class Module {
     driveI.initDefault(DriveConstants.moduleFactors.driveMotor().kI());
     driveD.initDefault(DriveConstants.moduleFactors.driveMotor().kD());
     driveFF.initDefault(DriveConstants.moduleFactors.driveMotor().kFF());
+    driveS.initDefault(DriveConstants.moduleFactors.driveMotorFF().kS());
+    driveV.initDefault(DriveConstants.moduleFactors.driveMotorFF().kV());
+    driveA.initDefault(DriveConstants.moduleFactors.driveMotorFF().kA());
     turnP.initDefault(DriveConstants.moduleFactors.turnMotor().kP());
     turnI.initDefault(DriveConstants.moduleFactors.turnMotor().kI());
     turnD.initDefault(DriveConstants.moduleFactors.turnMotor().kD());
     turnFF.initDefault(DriveConstants.moduleFactors.turnMotor().kFF());
   }
 
+  private SimpleMotorFeedforward driveMotorFF =
+      new SimpleMotorFeedforward(
+          DriveConstants.moduleFactors.driveMotorFF().kS(),
+          DriveConstants.moduleFactors.driveMotorFF().kV(),
+          DriveConstants.moduleFactors.driveMotorFF().kA());
+
   public Module(ModuleIO io, int index, Rotation2d chassisAngularOffset) {
     this.io = io;
     this.index = index;
     angularOffset = chassisAngularOffset;
+    moduleState = new SwerveModuleState();
+    modulePosition = new SwerveModulePosition();
 
     setBrakeMode(true);
   }
@@ -50,6 +70,22 @@ public class Module {
   public void updateInputs() {
     io.updateInputs(inputs);
     Logger.processInputs("Drive/Module" + Integer.toString(index), inputs);
+
+    // update current module state and position
+    // note that we do not reallocate the state and position placeholders,
+    // instead we update them here in place, once new inputs are processed
+    //
+    // since this method is invoked at the main loop robot frequency,
+    // there is no need to sample drive velocity more frequently, as
+    // odometry tracking does not depend on velocity, but only on position
+    //
+    // module angle is already adjusted by the raw offset, reporting values
+    // with respect to the robot's chassis
+
+    moduleState.speedMetersPerSecond = inputs.driveVelocityMetersPerSec;
+    moduleState.angle = inputs.turnPosition;
+    modulePosition.distanceMeters = inputs.drivePositionMeters;
+    modulePosition.angle = inputs.turnPosition;
   }
 
   public void periodic() {
@@ -63,6 +99,10 @@ public class Module {
       io.configureDrivePID(driveP.get(), driveI.get(), driveD.get(), driveFF.get());
     }
 
+    if (driveS.hasChanged(callerId) || driveV.hasChanged(callerId) || driveA.hasChanged(callerId)) {
+      driveMotorFF = new SimpleMotorFeedforward(driveS.get(), driveV.get(), driveA.get());
+    }
+
     if (turnP.hasChanged(callerId)
         || turnI.hasChanged(callerId)
         || turnD.hasChanged(callerId)
@@ -71,24 +111,35 @@ public class Module {
     }
   }
 
-  /** Runs the module with the specified setpoint state. Returns the optimized state. */
-  public SwerveModuleState runSetpoint(SwerveModuleState state) {
+  /**
+   * Runs the module with the specified setpoint state and an optional angular velocity. Returns the
+   * optimized state.
+   */
+  public void runSetpoint(SwerveModuleState state, double omegaRadiansPerSecond) {
     // optimize state based on current angle
-    final var optimizedState = adjustAndOptimize(state, getAngle(), angularOffset);
+    //
+    // we do not use FRC WPILIB SwerveModuleState.optimize method,
+    // instead we use similar logic that reduces allocations, note
+    // that we also adjust the angle by the module angular offset
+    var desiredAngle = Misc.clampAngle(state.angle.getRadians() + angularOffset.getRadians());
+    var currentAngle = Misc.clampAngle(getRawAngle().getRadians());
+    var desiredSpeed = state.speedMetersPerSecond;
 
-    // command driving and turning SPARK MAX towards their respective setpoints
-    io.setDriveVelocity(optimizedState.speedMetersPerSecond);
+    // 91 degrees to avoid instability
+    if (Math.abs(desiredAngle - currentAngle) > 1.58825) {
+      desiredSpeed *= -1;
+      desiredAngle = Misc.clampAngle(desiredAngle + Math.PI);
+    }
 
-    // TODO: support for second-order kinematics
-    // var desiredOmega = optimizedState.omega.getRadians(); // radians per second
-    // var turningFF =
-    //     DriveConstants.drivetrainConfig.turnMotor().nominalVoltage()
-    //         * desiredOmega
-    //         / DriveConstants.drivetrainConfig.turnMotorMaxAngularSpeed();
-    // io.setTurnAngleAndFF(optimizedState.angle.getRadians(), turningFF);
+    // command driving and turning motors towards their respective setpoints
+    io.setDriveVelocity(desiredSpeed, driveMotorFF.calculate(desiredSpeed));
 
-    io.setTurnAngle(optimizedState.angle.getRadians());
-    return optimizedState;
+    final var turningFF =
+        DriveConstants.drivetrainConfig.turnMotor().nominalVoltage()
+            * omegaRadiansPerSecond
+            / DriveConstants.drivetrainConfig.turnMotorMaxAngularSpeed();
+
+    io.setTurnAngle(desiredAngle, turningFF);
   }
 
   /** Disables all outputs to motors. */
@@ -103,31 +154,28 @@ public class Module {
     io.setTurnBrakeMode(enabled);
   }
 
-  /** Returns recently recorded sequence of positions fusing both drive and turn odometries. */
-  public SwerveModulePosition[] getPositions() {
-    final var minOdometryPositions =
-        Math.min(inputs.odometryDrivePositionsMeter.length, inputs.odometryTurnPositions.length);
-    final var positions = new SwerveModulePosition[minOdometryPositions];
-    for (var i = 0; i < minOdometryPositions; i++) {
-      positions[i] =
-          new SwerveModulePosition(
-              inputs.odometryDrivePositionsMeter[i], inputs.odometryTurnPositions[i]);
-    }
-    return positions;
+  /** Returns the recently sampled module positions. */
+  public double[] getSampledPositionsMeters() {
+    return inputs.odometryDrivePositionsMeters;
   }
 
-  /** Returns the current turn angle of the module. */
+  /** Returns the recently sampled module turn angles. */
+  public Rotation2d[] getSampledAngles() {
+    return inputs.odometryTurnPositions;
+  }
+
+  /** Returns the current turn angle of the module (already adjusted for offset). */
   public Rotation2d getAngle() {
     return inputs.turnPosition;
   }
 
-  /** Returns the current turn angle of the module adjusted for offset. */
-  public Rotation2d getAdjustedAngle() {
-    return Misc.subtract(inputs.turnPosition, angularOffset);
+  /** Returns the current raw (unadjusted) turn angle of the module. */
+  public Rotation2d getRawAngle() {
+    return Misc.add(inputs.turnPosition, angularOffset);
   }
 
   /** Returns the current drive position of the module in meters. */
-  public double getPositionMeter() {
+  public double getPositionMeters() {
     return inputs.drivePositionMeters;
   }
 
@@ -138,43 +186,16 @@ public class Module {
 
   /** Returns the module position (turn angle and drive position). */
   public SwerveModulePosition getPosition() {
-    return new SwerveModulePosition(getPositionMeter(), getAdjustedAngle());
+    return modulePosition;
   }
 
   /** Returns the module state (turn angle and drive velocity). */
   public SwerveModuleState getState() {
-    return new SwerveModuleState(getVelocityMetersPerSec(), getAdjustedAngle());
+    return moduleState;
   }
 
   /** Resets encoders position. */
   public void resetEncoders() {
     io.resetEncoders();
-  }
-
-  /**
-   * Replacement for FRC WPILIB SwerveModuleState.optimize method with additional logic to improve
-   * numerical stability and reduce allocations. This also adjusts the desired state to account for
-   * the angular offset.
-   */
-  private static SwerveModuleState adjustAndOptimize(
-      SwerveModuleState desiredState, Rotation2d currentAngle, Rotation2d angularOffset) {
-    final var desiredAngle = desiredState.angle.getRadians() + angularOffset.getRadians();
-
-    final var delta = Math.abs(desiredAngle - currentAngle.getRadians());
-    if (delta < 0.1) {
-      return new SwerveModuleState(
-          desiredState.speedMetersPerSecond, Rotation2d.fromRadians(desiredAngle));
-    }
-
-    // a bit over 90 degrees to avoid instability
-    final double threshold = Math.PI * 0.5 * 1.01;
-    if (delta > threshold) {
-      return new SwerveModuleState(
-          -desiredState.speedMetersPerSecond,
-          Rotation2d.fromRadians(desiredAngle + Math.toRadians(180.0)));
-    }
-
-    return new SwerveModuleState(
-        desiredState.speedMetersPerSecond, Rotation2d.fromRadians(desiredAngle));
   }
 }

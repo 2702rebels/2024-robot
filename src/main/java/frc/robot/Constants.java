@@ -21,6 +21,9 @@ public final class Constants {
   /** Default numerical threshold for "zero" values */
   public static final double epsilon = 1e-6;
 
+  /** Robot main loop cycle period in seconds */
+  public static final double cyclePeriodSeconds = 0.02;
+
   /** Odometry frequency (Hz) */
   public static final int odometryFrequency = 200;
 
