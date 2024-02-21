@@ -19,9 +19,17 @@ public class RobotContainer {
   }
 
   private void configureBindings() {
+    //Command shoot = Commands.sequence(Commands.runOnce(() -> {m_shooter.runFlywheel();}, m_shooter), Commands.waitSeconds(2), Commands.runOnce(() -> {m_shooter.runFeed();}));
+    Command shoot2 = Commands.runOnce(() -> {m_shooter.runFlywheel();}, m_shooter).andThen(Commands.waitSeconds(2)).andThen(() -> {m_shooter.runFeed();}, m_shooter);
+
+
     m_driverController.rightTrigger()
-      .onTrue(new InstantCommand(() -> {m_shooter.shoot();}))
+      .onTrue(shoot2)
       .onFalse(new InstantCommand(() -> {m_shooter.stop();}));
+  }
+
+  public void onDisable() {
+    m_shooter.stop();
   }
 
   public Command getAutonomousCommand() {
