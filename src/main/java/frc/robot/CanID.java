@@ -12,4 +12,6 @@ public final class CanID {
   public static final int MOTOR_TURN_FR = 4;
   public static final int MOTOR_TURN_RL = 7;
   public static final int MOTOR_TURN_RR = 2;
+
+  public static final int MOTOR_PIVOT = 12;
 }
