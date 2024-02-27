@@ -40,6 +40,9 @@ public class Pivot extends SubsystemBase {
       new LoggedDashboardNumber("Pivot/RequestedPos");
   private final LoggedDashboardNumber measuredPos = new LoggedDashboardNumber("Pivot/MeasuredPos");
 
+  private final LoggedDashboardNumber statePos = new LoggedDashboardNumber("Pivot/StatePosition");
+  private final LoggedDashboardNumber stateVel = new LoggedDashboardNumber("Pivot/StateVelocity");
+
   private final CANSparkMax controller = new CANSparkMax(CanID.MOTOR_PIVOT, MotorType.kBrushless);
   private final SparkAbsoluteEncoder encoder = controller.getAbsoluteEncoder(Type.kDutyCycle);
   private final SparkPIDController pid = controller.getPIDController();
@@ -56,9 +59,9 @@ public class Pivot extends SubsystemBase {
 
     requestedPos.set(0);
 
-    controller.restoreFactoryDefaults();
+    // controller.restoreFactoryDefaults();
     controller.setIdleMode(IdleMode.kBrake);
-    controller.setSmartCurrentLimit(40);
+    controller.setSmartCurrentLimit(20);
     controller.setInverted(true);
 
     pid.setP(kp.get(), 0);
@@ -75,16 +78,22 @@ public class Pivot extends SubsystemBase {
   public void periodic() {
     // Update dashboard values
     measuredPos.set(encoder.getPosition());
+    statePos.set(state.position);
+    statePos.set(state.velocity);
 
     if (enable) {
       goal.position = requestedPos.get();
       state =
           trapezoidProfile.calculate(
               0.02, state, goal); // This calulate method is doing at least two new allocaitons...
-      double ff = armFeedforward.calculate(state.position, state.velocity); // Should log these values for playback. Also the measured encoder values.
+      double ff =
+          armFeedforward.calculate(
+              state.position,
+              state.velocity); // Should log these values for playback. Also the measured encoder
+      // values.
       pid.setReference(state.position, ControlType.kPosition, 0, ff);
-    }
-    else{
+
+    } else {
       controller.stopMotor();
     }
   }

@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.DriveCommands;
+import frc.robot.subsystems.Pivot;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -23,6 +24,7 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 public class RobotContainer {
   // subsystems
   private final Drive drive;
+  private final Pivot pivot;
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -31,6 +33,8 @@ public class RobotContainer {
   private final LoggedDashboardChooser<Command> autoChooser;
 
   public RobotContainer() {
+    pivot = new Pivot();
+
     switch (Constants.currentMode) {
       case REAL:
         // real robot, instantiate hardware IO implementations
@@ -92,6 +96,8 @@ public class RobotContainer {
         .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
 
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
+
+    controllerDriver.y().onTrue(pivot.enableControl()).onFalse(pivot.disableControl());
   }
 
   public Command getAutonomousCommand() {
