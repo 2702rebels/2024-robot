@@ -11,6 +11,7 @@ import com.revrobotics.CANSparkBase.ControlType;
 import com.revrobotics.CANSparkBase.IdleMode;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ShooterConstants;
@@ -24,6 +25,8 @@ public class ShooterSubsystem extends SubsystemBase {
   private SparkPIDController m_flywheelPID;
 
   private double periodicrpmTarget = 0;
+
+  private DigitalInput beambreak = new DigitalInput(8);
 
   /** Creates a new ShooterSubsystem. */
   public ShooterSubsystem() {
@@ -52,6 +55,7 @@ public class ShooterSubsystem extends SubsystemBase {
     // Configure and save settings to the feeder motor controller.
     m_feederMotorController.restoreFactoryDefaults();
     m_feederMotorController.setInverted(true);
+    m_feederMotorController.setIdleMode(IdleMode.kBrake);
     m_feederMotorController.burnFlash();
 
     SmartDashboard.putNumber("ConfigFlywheelRPM", 3000);
@@ -63,6 +67,7 @@ public class ShooterSubsystem extends SubsystemBase {
     // This method will be called once per scheduler run
     double flyWheelRPM = (m_flywheelEncoder.getVelocity());
     SmartDashboard.putNumber("Flywheel Speed", flyWheelRPM);
+    SmartDashboard.putBoolean("Beambreak", beambreak.get());
 
     //m_flywheelPID.setReference(periodicrpmTarget, ControlType.kVelocity);
   }
@@ -98,6 +103,10 @@ public class ShooterSubsystem extends SubsystemBase {
   public void stop() {
     stopFlywheel();
     stopFeed();
+  }
+
+  public boolean isGamePeice() {
+    return !beambreak.get();
   }
 
 }

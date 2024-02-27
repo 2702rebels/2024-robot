@@ -20,12 +20,16 @@ public class RobotContainer {
 
   private void configureBindings() {
     //Command shoot = Commands.sequence(Commands.runOnce(() -> {m_shooter.runFlywheel();}, m_shooter), Commands.waitSeconds(2), Commands.runOnce(() -> {m_shooter.runFeed();}));
-    Command shoot2 = Commands.runOnce(() -> {m_shooter.runFlywheel();}, m_shooter).andThen(Commands.waitSeconds(2)).andThen(() -> {m_shooter.runFeed();}, m_shooter);
-
+    Command shoot2 = Commands.runOnce(() -> {m_shooter.runFlywheel();}, m_shooter).andThen(Commands.waitSeconds(1)).andThen(() -> {m_shooter.runFeed();}, m_shooter);
+    Command feedTillSensor = Commands.startEnd(() -> {m_shooter.runFeed();}, () -> {m_shooter.stopFeed();}, m_shooter).until(() -> { return m_shooter.isGamePeice();});
+    
+    //Commands.runOnce(() -> {m_shooter.runFeed();}, m_shooter).(null).andThen(() -> {m_shooter.stopFeed();}, m_shooter);
 
     m_driverController.rightTrigger()
       .onTrue(shoot2)
-      .onFalse(new InstantCommand(() -> {m_shooter.stop();}));
+      .onFalse(new InstantCommand(() -> {m_shooter.stop();}, m_shooter));
+
+    m_driverController.a().whileTrue(feedTillSensor);
   }
 
   public void onDisable() {
