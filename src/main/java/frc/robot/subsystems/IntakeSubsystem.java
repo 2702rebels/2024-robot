@@ -26,6 +26,7 @@ public class IntakeSubsystem extends SubsystemBase {
     SmartDashboard.putNumber(getName().concat("/MeasuredSpeed"), 0);
 
     m_intakeMotorController.restoreFactoryDefaults();
+    m_intakeMotorController.setSmartCurrentLimit(30);
     m_intakeMotorController.setIdleMode(IdleMode.kCoast);
     m_intakeMotorController.setInverted(true);
     m_intakeMotorController.burnFlash();
