@@ -69,7 +69,9 @@ public class ShooterSubsystem extends SubsystemBase {
 
   public void runFlywheel() {
     double rpmTarget = SmartDashboard.getNumber("ConfigFlywheelRPM", 3000);
-    m_flywheelPID.setReference(rpmTarget, ControlType.kVelocity, 0);
+    //m_flywheelPID.setReference(rpmTarget, ControlType.kVelocity, 0);
+
+    m_flywheelLeader.set(1.0);
 
     periodicrpmTarget = rpmTarget;
     
