@@ -2,26 +2,20 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.subsystems;
+package frc.robot.subsystems.pivot;
 
-import com.revrobotics.CANSparkBase.ControlType;
-import com.revrobotics.CANSparkBase.IdleMode;
-import com.revrobotics.CANSparkLowLevel.MotorType;
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.SparkAbsoluteEncoder;
-import com.revrobotics.SparkAbsoluteEncoder.Type;
-import com.revrobotics.SparkPIDController;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.CanID;
 import frc.robot.util.LoggedTunableNumber;
+import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardNumber;
 
 public class Pivot extends SubsystemBase {
+  private static final double LOOP_PERIOD_SECS = 0.02;
   private final LoggedTunableNumber kp = new LoggedTunableNumber("Pivot/PID/P", 0.0);
   private final LoggedTunableNumber ki = new LoggedTunableNumber("Pivot/PID/I", 0.0);
   private final LoggedTunableNumber kd = new LoggedTunableNumber("Pivot/PID/D", 0.0);
@@ -32,72 +26,83 @@ public class Pivot extends SubsystemBase {
   private final LoggedTunableNumber ka = new LoggedTunableNumber("Pivot/ArmFeedForward/KA", 0.0);
 
   private final LoggedTunableNumber kmv =
-      new LoggedTunableNumber("Pivot/ArmFeedForward/MaxVelocity", 0.0);
+      new LoggedTunableNumber("Pivot/TrapezoidProfile/MaxVelocity", 0.0);
   private final LoggedTunableNumber kma =
-      new LoggedTunableNumber("Pivot/ArmFeedForward/MaxAcceleration", 0.0);
+      new LoggedTunableNumber("Pivot/TrapezoidProfile/MaxAcceleration", 0.0);
 
   private final LoggedDashboardNumber requestedPos =
       new LoggedDashboardNumber("Pivot/RequestedPos");
-  private final LoggedDashboardNumber measuredPos = new LoggedDashboardNumber("Pivot/MeasuredPos");
 
   private final LoggedDashboardNumber statePos = new LoggedDashboardNumber("Pivot/StatePosition");
   private final LoggedDashboardNumber stateVel = new LoggedDashboardNumber("Pivot/StateVelocity");
+  private final LoggedDashboardNumber feedforward =
+      new LoggedDashboardNumber("Pivot/ArmFeedForward");
 
-  private final CANSparkMax controller = new CANSparkMax(CanID.MOTOR_PIVOT, MotorType.kBrushless);
-  private final SparkAbsoluteEncoder encoder = controller.getAbsoluteEncoder(Type.kDutyCycle);
-  private final SparkPIDController pid = controller.getPIDController();
-  private final ArmFeedforward armFeedforward;
-  private final TrapezoidProfile trapezoidProfile;
+  private ArmFeedforward armFeedforward;
+  private TrapezoidProfile trapezoidProfile;
 
   private TrapezoidProfile.State state = new State(0, 0);
   private TrapezoidProfile.State goal = new State(0, 0);
 
   private boolean enable = false;
 
+  private final PivotIO pivotMotor;
+  private final PivotIOInputsAutoLogged motorInputs = new PivotIOInputsAutoLogged();
+
   /** Creates a new Pivot. */
-  public Pivot() {
-
+  public Pivot(PivotIO pivot) {
+    pivotMotor = pivot;
+    pivotMotor.configureJointPID(kp.get(), ki.get(), kd.get());
     requestedPos.set(0);
-
-    // controller.restoreFactoryDefaults();
-    controller.setIdleMode(IdleMode.kBrake);
-    controller.setSmartCurrentLimit(20);
-    controller.setInverted(true);
-
-    pid.setP(kp.get(), 0);
-    pid.setI(ki.get(), 0);
-    pid.setD(kd.get(), 0);
-
-    controller.burnFlash();
-
     armFeedforward = new ArmFeedforward(ks.get(), kg.get(), kv.get(), ka.get());
     trapezoidProfile = new TrapezoidProfile(new TrapezoidProfile.Constraints(kmv.get(), kma.get()));
   }
 
   @Override
   public void periodic() {
+    pivotMotor.updateInputs(motorInputs);
+    Logger.processInputs("Pivot/Motor", motorInputs);
+
+    final var callerId = hashCode();
+    if (kp.hasChanged(callerId) || ki.hasChanged(callerId) || kd.hasChanged(callerId)) {
+      pivotMotor.configureJointPID(kp.get(), ki.get(), kd.get());
+    }
+
+    if (ks.hasChanged(callerId)
+        || kg.hasChanged(callerId)
+        || kv.hasChanged(callerId)
+        || ka.hasChanged(callerId)) {
+      armFeedforward = new ArmFeedforward(ks.get(), kg.get(), kv.get(), ka.get());
+    }
+
+    if (kmv.hasChanged(callerId) || kma.hasChanged(callerId)) {
+      trapezoidProfile =
+          new TrapezoidProfile(new TrapezoidProfile.Constraints(kmv.get(), kma.get()));
+    }
+
+    goal.position = requestedPos.get();
+    state.position = motorInputs.measuredPosition.getRadians();
+    state.velocity = motorInputs.measuredVelocityRadPerSec;
+    state =
+        trapezoidProfile.calculate(
+            LOOP_PERIOD_SECS,
+            state,
+            goal); // This calulate method is doing at least two new allocaitons...
+    double ff = armFeedforward.calculate(state.position, state.velocity);
+
     // Update dashboard values
-    measuredPos.set(encoder.getPosition());
     statePos.set(state.position);
-    statePos.set(state.velocity);
+    stateVel.set(state.velocity);
+    feedforward.set(ff);
 
     if (enable) {
-      goal.position = requestedPos.get();
-      state =
-          trapezoidProfile.calculate(
-              0.02, state, goal); // This calulate method is doing at least two new allocaitons...
-      double ff =
-          armFeedforward.calculate(
-              state.position,
-              state.velocity); // Should log these values for playback. Also the measured encoder
-      // values.
-      pid.setReference(state.position, ControlType.kPosition, 0, ff);
-
+      pivotMotor.setJointAngle(state.position, ff);
     } else {
-      controller.stopMotor();
+      pivotMotor.stop();
     }
   }
 
+  /** Enables the pid while command is running. Stops it when command ends. */
   public Command enableControl() {
     return Commands.startEnd(
         () -> {
