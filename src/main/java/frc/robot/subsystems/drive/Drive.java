@@ -70,7 +70,7 @@ public class Drive extends SubsystemBase {
   private static final SwerveModuleState[] emptyStates = new SwerveModuleState[] {};
 
   private static final LoggedTunableNumber orientationP =
-      new LoggedTunableNumber("Drive/Orientation/P", 0.5);
+      new LoggedTunableNumber("Drive/Orientation/P", 0.3);
 
   // orientation to maintain while lock is in place
   private double orientationLockAngleRad;
