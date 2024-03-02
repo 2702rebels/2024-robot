@@ -12,15 +12,20 @@ import java.util.Queue;
 
 /** Module IO implementation for Pigeon2 */
 public class GyroIOPigeon2 implements GyroIO {
-  private final Pigeon2 pigeon = new Pigeon2(20);
-  private final StatusSignal<Double> yaw = pigeon.getYaw();
+  private final Pigeon2 pigeon;
+  private final StatusSignal<Double> yaw;
   private final Queue<Double> yawPositionQueue;
-  private final StatusSignal<Double> yawVelocity = pigeon.getAngularVelocityZWorld();
+  private final StatusSignal<Double> yawVelocity;
 
-  public GyroIOPigeon2(boolean phoenixDrive) {
+  public GyroIOPigeon2(int deviceNumber, boolean phoenixDrive) {
+    pigeon = new Pigeon2(deviceNumber);
     pigeon.getConfigurator().apply(new Pigeon2Configuration());
     pigeon.getConfigurator().setYaw(0.0);
+
+    yaw = pigeon.getYaw();
     yaw.setUpdateFrequency(Constants.odometryFrequency);
+
+    yawVelocity = pigeon.getAngularVelocityZWorld();
     yawVelocity.setUpdateFrequency(100.0);
     pigeon.optimizeBusUtilization();
     if (phoenixDrive) {
