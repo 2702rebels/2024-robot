@@ -18,11 +18,15 @@ import frc.robot.subsystems.drive.GyroIOPigeon1;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOSparkMax;
+import frc.robot.subsystems.led.LedSubsystem;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
   // subsystems
   private final Drive drive;
+  // Note LEDs are not tested in the context of this project; please see:
+  // SampleCommandRobot project for a working example.
+  private final LedSubsystem led = new LedSubsystem();
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -92,6 +96,16 @@ public class RobotContainer {
         .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
 
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
+
+    // Set any required LED commands, e.g.,
+    // controllerDriver.a().onTrue(Commands.runOnce(() -> led.setPattern(LEDPattern.FLASH, 3)));
+    // controllerDriver.b().onTrue(Commands.runOnce(() -> led.setPattern(LEDPattern.OFF, 3)));
+    // controllerDriver.x().onTrue(Commands.runOnce(() -> led.setPattern(LEDPattern.LOADING, 3)));
+    // controllerDriver.y().onTrue(Commands.runOnce(() -> led.setPattern(LEDPattern.BREATH, 3)));
+    // controllerDriver.rightTrigger().onTrue(Commands.runOnce(() -> led.setColor(CustomColor.WHITE)));
+    // controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> led.setColor(CustomColor.RED)));
+    // controllerDriver.leftTrigger().onTrue(Commands.runOnce(() -> led.setColor(CustomColor.GREEN)));
+    // controllerDriver.leftBumper().onTrue(Commands.runOnce(() -> led.setColor(CustomColor.BLUE)));
   }
 
   public Command getAutonomousCommand() {
