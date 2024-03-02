@@ -32,11 +32,14 @@ public class Pivot extends SubsystemBase {
 
   private final LoggedDashboardNumber requestedPos =
       new LoggedDashboardNumber("Pivot/RequestedPos");
+  private final LoggedDashboardNumber goalPos = new LoggedDashboardNumber("Pivot/GoalPosition");
 
   private final LoggedDashboardNumber statePos = new LoggedDashboardNumber("Pivot/StatePosition");
   private final LoggedDashboardNumber stateVel = new LoggedDashboardNumber("Pivot/StateVelocity");
   private final LoggedDashboardNumber feedforward =
       new LoggedDashboardNumber("Pivot/ArmFeedForward");
+  private final LoggedDashboardNumber angle = new LoggedDashboardNumber("Pivot/Angle");
+  private final LoggedDashboardNumber radians = new LoggedDashboardNumber("Pivot/Radians");
 
   private ArmFeedforward armFeedforward;
   private TrapezoidProfile trapezoidProfile;
@@ -53,7 +56,6 @@ public class Pivot extends SubsystemBase {
   public Pivot(PivotIO pivot) {
     pivotMotor = pivot;
     pivotMotor.configureJointPID(kp.get(), ki.get(), kd.get());
-    requestedPos.set(0);
     armFeedforward = new ArmFeedforward(ks.get(), kg.get(), kv.get(), ka.get());
     trapezoidProfile = new TrapezoidProfile(new TrapezoidProfile.Constraints(kmv.get(), kma.get()));
   }
@@ -65,6 +67,7 @@ public class Pivot extends SubsystemBase {
 
     final var callerId = hashCode();
     if (kp.hasChanged(callerId) || ki.hasChanged(callerId) || kd.hasChanged(callerId)) {
+      System.out.println("Pivot PID parameters have changed. Reconfiguring them.");
       pivotMotor.configureJointPID(kp.get(), ki.get(), kd.get());
     }
 
@@ -72,17 +75,28 @@ public class Pivot extends SubsystemBase {
         || kg.hasChanged(callerId)
         || kv.hasChanged(callerId)
         || ka.hasChanged(callerId)) {
+      System.out.println("Pivot ArmFeedForward parameters have changed. Reconfiguring them.");
       armFeedforward = new ArmFeedforward(ks.get(), kg.get(), kv.get(), ka.get());
     }
 
     if (kmv.hasChanged(callerId) || kma.hasChanged(callerId)) {
+      System.out.println("Pivot TrapezoidProfile parameters have changed. Reconfiguring them.");
       trapezoidProfile =
           new TrapezoidProfile(new TrapezoidProfile.Constraints(kmv.get(), kma.get()));
     }
 
-    goal.position = requestedPos.get();
-    state.position = motorInputs.measuredPosition.getRadians();
-    state.velocity = motorInputs.measuredVelocityRadPerSec;
+    if (requestedPos.get() > 90) {
+      goalPos.set(90);
+    } else if (requestedPos.get() < 10) {
+      goalPos.set(10);
+    } else {
+      goalPos.set(requestedPos.get());
+    }
+
+    // Convert from degrees to radians.
+    goal.position = goalPos.get() * (Math.PI / 180);
+    state.position = motorInputs.measuredPositionRadians;
+    state.velocity = motorInputs.measuredVelocityRadiansPerSecond;
     state =
         trapezoidProfile.calculate(
             LOOP_PERIOD_SECS,
@@ -90,10 +104,12 @@ public class Pivot extends SubsystemBase {
             goal); // This calulate method is doing at least two new allocaitons...
     double ff = armFeedforward.calculate(state.position, state.velocity);
 
-    // Update dashboard values
+    // Update dashboard values.
     statePos.set(state.position);
     stateVel.set(state.velocity);
     feedforward.set(ff);
+    radians.set(motorInputs.measuredPositionRadians);
+    angle.set(motorInputs.measuredPositionRadians * (180 / Math.PI));
 
     if (enable) {
       pivotMotor.setJointAngle(state.position, ff);
@@ -114,6 +130,7 @@ public class Pivot extends SubsystemBase {
         this);
   }
 
+  /** Disables control. */
   public Command disableControl() {
     return Commands.runOnce(
         () -> {

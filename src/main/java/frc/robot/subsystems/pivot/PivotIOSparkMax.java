@@ -11,7 +11,6 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.SparkAbsoluteEncoder;
 import com.revrobotics.SparkAbsoluteEncoder.Type;
 import com.revrobotics.SparkPIDController;
-import edu.wpi.first.math.geometry.Rotation2d;
 import frc.robot.util.SparkMaxBurnManager;
 
 /** Add your docs here. */
@@ -38,7 +37,9 @@ public class PivotIOSparkMax implements PivotIO {
     // Configure encoder.
     // absolutEncoder.setAverageDepth(2);
     absolutEncoder.setInverted(false);
-    // absolutEncoder.setPositionConversionFactor(2 * Math.PI);
+    absolutEncoder.setPositionConversionFactor(2 * Math.PI);
+    absolutEncoder.setVelocityConversionFactor((2 * Math.PI) / 60);
+    absolutEncoder.setInverted(true);
 
     // Configure PID.
     pid.setFeedbackDevice(absolutEncoder);
@@ -51,15 +52,16 @@ public class PivotIOSparkMax implements PivotIO {
 
   @Override
   public void updateInputs(PivotIOInputs inputs) {
-    inputs.measuredPosition = Rotation2d.fromRadians(absolutEncoder.getPosition());
-    inputs.measuredVelocityRadPerSec = absolutEncoder.getVelocity();
+    inputs.measuredPositionRadians = absolutEncoder.getPosition();
+    inputs.measuredVelocityRadiansPerSecond = absolutEncoder.getVelocity();
     inputs.appliedVolts = sparkMax.getBusVoltage();
     inputs.currentAmps = sparkMax.getOutputCurrent();
   }
 
   @Override
-  public void stop() {
-    sparkMax.stopMotor();
+  public void setBrakeMode(boolean enable) {
+    if (enable) sparkMax.setIdleMode(IdleMode.kBrake);
+    else sparkMax.setIdleMode(IdleMode.kCoast);
   }
 
   @Override
@@ -77,5 +79,10 @@ public class PivotIOSparkMax implements PivotIO {
   @Override
   public void setJointAngle(double angleRadians, double ff) {
     pid.setReference(angleRadians, ControlType.kPosition, 0, ff);
+  }
+
+  @Override
+  public void stop() {
+    sparkMax.stopMotor();
   }
 }

@@ -4,7 +4,6 @@
 
 package frc.robot.subsystems.pivot;
 
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
@@ -20,8 +19,8 @@ public class PivotIOSim implements PivotIO {
   public void updateInputs(PivotIOInputs inputs) {
     motorSim.update(LOOP_PERIOD_SECS);
 
-    inputs.measuredPosition = new Rotation2d(motorSim.getAngularPositionRad());
-    inputs.measuredVelocityRadPerSec = motorSim.getAngularVelocityRadPerSec();
+    inputs.measuredPositionRadians = motorSim.getAngularPositionRotations();
+    inputs.measuredVelocityRadiansPerSecond = motorSim.getAngularVelocityRPM();
     inputs.appliedVolts = appliedVolts;
   }
 }
