@@ -1,13 +1,13 @@
 package frc.robot.subsystems.drive;
 
-import edu.wpi.first.wpilibj.Timer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalDouble;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.DoubleSupplier;
+import java.util.function.Supplier;
 import org.littletonrobotics.junction.AutoLog;
 import org.littletonrobotics.junction.Logger;
 
@@ -22,7 +22,7 @@ public class DriveOdometryTracker {
 
   private final Lock lock = new ReentrantLock();
   private final List<Queue<Double>> queues = new ArrayList<>();
-  private final List<DoubleSupplier> signals = new ArrayList<>();
+  private final List<Supplier<OptionalDouble>> signals = new ArrayList<>();
   private final Queue<Double> timestamps = new ArrayBlockingQueue<>(maxQueueCapacity);
 
   private static DriveOdometryTracker instance = null;
@@ -35,7 +35,7 @@ public class DriveOdometryTracker {
   }
 
   /** Registers the specified signal and returns the corresponding queue. */
-  public Queue<Double> registerSignal(DoubleSupplier signal) {
+  public Queue<Double> registerSignal(Supplier<OptionalDouble> signal) {
     final Queue<Double> queue = new ArrayBlockingQueue<>(maxQueueCapacity);
     lock.lock();
     try {
@@ -55,9 +55,22 @@ public class DriveOdometryTracker {
     final var timestamp = Logger.getRealTimestamp() / 1E6;
     lock.lock();
     try {
-      timestamps.offer(timestamp);
-      for (var i = 0; i < signals.size(); i++) {
-        queues.get(i).offer(signals.get(i).getAsDouble());
+      var allSignalsPresent = true;
+      final var values = new double[signals.size()];
+      for (var i = 0; i < values.length; ++i) {
+        final var value = signals.get(i).get();
+        if (value.isPresent()) {
+          values[i] = value.getAsDouble();
+        } else {
+          allSignalsPresent = false;
+          break;
+        }
+      }
+      if (allSignalsPresent) {
+        timestamps.offer(timestamp);
+        for (var i = 0; i < values.length; ++i) {
+          queues.get(i).offer(values[i]);
+        }
       }
     } finally {
       lock.unlock();
@@ -71,11 +84,6 @@ public class DriveOdometryTracker {
       // read timestamps and clear the queue
       inputs.timestamps = timestamps.stream().mapToDouble(Double::valueOf).toArray();
       timestamps.clear();
-
-      // fake timestamps in simulation
-      if (inputs.timestamps.length == 0) {
-        inputs.timestamps = new double[] {Timer.getFPGATimestamp()};
-      }
 
       updater.run();
     } finally {

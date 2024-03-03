@@ -15,8 +15,9 @@ package frc.robot.subsystems.drive;
 
 import edu.wpi.first.wpilibj.Notifier;
 import frc.robot.Constants;
+import java.util.OptionalDouble;
 import java.util.Queue;
-import java.util.function.DoubleSupplier;
+import java.util.function.Supplier;
 
 /**
  * Provides an interface for asynchronously reading high-frequency measurements to a set of queues.
@@ -44,7 +45,7 @@ public class SparkMaxOdometryThread {
     notifier.startPeriodic(1.0 / Constants.odometryFrequency);
   }
 
-  public Queue<Double> registerSignal(DoubleSupplier signal) {
+  public Queue<Double> registerSignal(Supplier<OptionalDouble> signal) {
     return tracker.registerSignal(signal);
   }
 

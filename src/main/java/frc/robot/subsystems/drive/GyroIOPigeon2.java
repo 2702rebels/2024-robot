@@ -8,6 +8,7 @@ import com.ctre.phoenix6.hardware.Pigeon2;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import frc.robot.Constants;
+import java.util.OptionalDouble;
 import java.util.Queue;
 
 /** Module IO implementation for Pigeon2 */
@@ -27,14 +28,19 @@ public class GyroIOPigeon2 implements GyroIO {
 
     yawVelocity = pigeon.getAngularVelocityZWorld();
     yawVelocity.setUpdateFrequency(100.0);
+
     pigeon.optimizeBusUtilization();
+
     if (phoenixDrive) {
-      yawPositionQueue =
-          PhoenixOdometryThread.getInstance().registerSignal(pigeon, pigeon.getYaw());
+      yawPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(pigeon, yaw);
     } else {
       yawPositionQueue =
           SparkMaxOdometryThread.getInstance()
-              .registerSignal(() -> pigeon.getYaw().getValueAsDouble());
+              .registerSignal(
+                  () ->
+                      yaw.refresh().getStatus().isOK()
+                          ? OptionalDouble.of(yaw.getValueAsDouble())
+                          : OptionalDouble.empty());
     }
   }
 

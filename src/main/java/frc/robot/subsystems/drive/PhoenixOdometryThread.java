@@ -18,6 +18,7 @@ import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.ParentDevice;
 import frc.robot.Constants;
+import java.util.OptionalDouble;
 import java.util.Queue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -64,7 +65,7 @@ public class PhoenixOdometryThread extends Thread {
       System.arraycopy(signals, 0, newSignals, 0, signals.length);
       newSignals[signals.length] = signal;
 
-      return tracker.registerSignal(() -> signal.getValueAsDouble());
+      return tracker.registerSignal(() -> OptionalDouble.of(signal.getValueAsDouble()));
     } finally {
       signalsLock.unlock();
     }

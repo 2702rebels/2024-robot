@@ -190,8 +190,8 @@ public class Drive extends SubsystemBase {
    *
    * <p>Note that there is no need for complex matrix/vector multiplication machinery, since we are
    * assuming constant chassis velocities, i.e. robot's linear and angular accelerations are
-   * considered to be zero this. As such we are reduced to a situation where module acceleration is
-   * just a centripetal acceleration.
+   * considered to be zero. As such we are reduced to a situation where module acceleration is just
+   * a centripetal acceleration.
    */
   private static double[] calculateAngularVelocity(
       ChassisSpeeds chassisSpeeds, SwerveModuleState[] moduleStates) {
@@ -398,6 +398,7 @@ public class Drive extends SubsystemBase {
   }
 
   /** Determines whether orientation lock is enabled. */
+  @AutoLogOutput(key = "Drive/OrientationLock/Enabled")
   public boolean hasOrientationLock() {
     return orientationLockEnabled;
   }
