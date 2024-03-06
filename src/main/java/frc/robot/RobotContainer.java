@@ -11,7 +11,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.commands.DriveCommands;
-import frc.robot.subsystems.IntakeSubsystem;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -19,13 +18,16 @@ import frc.robot.subsystems.drive.GyroIOPigeon1;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOSparkMax;
+import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.IntakeIO;
+import frc.robot.subsystems.intake.IntakeIOSim;
+import frc.robot.subsystems.intake.IntakeIOSparkMax;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
   // subsystems
   private final Drive drive;
-
-  private final IntakeSubsystem m_intake = new IntakeSubsystem();
+  private final Intake intake;
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -45,16 +47,19 @@ public class RobotContainer {
                         DriveConstants.moduleConfigs[index],
                         DriveConstants.moduleAngularOffsets[index],
                         DriveConstants.drivetrainConfig));
+        intake = new Intake(new IntakeIOSparkMax());
         break;
 
       case SIM:
         // sim robot, instantiate physics sim IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
+        intake = new Intake(new IntakeIOSim());
         break;
 
       default:
         // replayed robot, disable IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
+        intake = new Intake(new IntakeIO() {});
         break;
     }
 
@@ -95,8 +100,9 @@ public class RobotContainer {
         .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
 
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
-    controllerDriver.leftTrigger().onTrue(m_intake.start()).onFalse(m_intake.stop());
-    controllerDriver.y().onTrue(m_intake.reverse()).onFalse(m_intake.stop());
+
+    controllerDriver.leftTrigger().whileTrue(intake.intake());
+    controllerDriver.y().whileTrue(intake.outake());
   }
 
   public Command getAutonomousCommand() {
