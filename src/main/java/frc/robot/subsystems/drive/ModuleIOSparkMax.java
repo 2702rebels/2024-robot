@@ -6,6 +6,7 @@ import com.revrobotics.CANSparkBase.IdleMode;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 import com.revrobotics.CANSparkLowLevel.PeriodicFrame;
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.REVLibError;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.SparkAbsoluteEncoder.Type;
 import com.revrobotics.SparkPIDController;
@@ -14,6 +15,7 @@ import frc.robot.Constants;
 import frc.robot.subsystems.drive.DriveConstants.DrivetrainConfig;
 import frc.robot.subsystems.drive.DriveConstants.ModuleConfig;
 import frc.robot.util.SparkMaxBurnManager;
+import java.util.OptionalDouble;
 import java.util.Queue;
 
 /**
@@ -38,6 +40,16 @@ public class ModuleIOSparkMax implements ModuleIO {
 
   private final SparkPIDController drivePIDController;
   private final SparkPIDController turnPIDController;
+
+  /**
+   * Guards values read from the controller against abnormal figures when status frame has not been
+   * received due to timeouts or other CAN errors.
+   */
+  private static OptionalDouble guardRawValue(CANSparkMax controller, double value) {
+    return controller.getLastError() == REVLibError.kOk
+        ? OptionalDouble.of(value)
+        : OptionalDouble.empty();
+  }
 
   public ModuleIOSparkMax(
       ModuleConfig module, Rotation2d angularOffset, DrivetrainConfig drivetrain) {
@@ -144,10 +156,12 @@ public class ModuleIOSparkMax implements ModuleIO {
     turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus6, velocityFramePeriod);
 
     drivePositionQueue =
-        SparkMaxOdometryThread.getInstance().registerSignal(driveEncoder::getPosition);
+        SparkMaxOdometryThread.getInstance()
+            .registerSignal(() -> guardRawValue(driveSparkMax, driveEncoder.getPosition()));
 
     turnPositionQueue =
-        SparkMaxOdometryThread.getInstance().registerSignal(turnAbsoluteEncoder::getPosition);
+        SparkMaxOdometryThread.getInstance()
+            .registerSignal(() -> guardRawValue(turnSparkMax, turnAbsoluteEncoder.getPosition()));
 
     if (SparkMaxBurnManager.shouldBurn()) {
       driveSparkMax.burnFlash();

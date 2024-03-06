@@ -70,7 +70,7 @@ public class Drive extends SubsystemBase {
   private static final SwerveModuleState[] emptyStates = new SwerveModuleState[] {};
 
   private static final LoggedTunableNumber orientationP =
-      new LoggedTunableNumber("Drive/Orientation/P", 0.5);
+      new LoggedTunableNumber("Drive/Orientation/P", 0.3);
 
   // orientation to maintain while lock is in place
   private double orientationLockAngleRad;
@@ -190,8 +190,8 @@ public class Drive extends SubsystemBase {
    *
    * <p>Note that there is no need for complex matrix/vector multiplication machinery, since we are
    * assuming constant chassis velocities, i.e. robot's linear and angular accelerations are
-   * considered to be zero this. As such we are reduced to a situation where module acceleration is
-   * just a centripetal acceleration.
+   * considered to be zero. As such we are reduced to a situation where module acceleration is just
+   * a centripetal acceleration.
    */
   private static double[] calculateAngularVelocity(
       ChassisSpeeds chassisSpeeds, SwerveModuleState[] moduleStates) {
@@ -398,6 +398,7 @@ public class Drive extends SubsystemBase {
   }
 
   /** Determines whether orientation lock is enabled. */
+  @AutoLogOutput(key = "Drive/OrientationLock/Enabled")
   public boolean hasOrientationLock() {
     return orientationLockEnabled;
   }

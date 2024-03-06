@@ -26,6 +26,14 @@ public class RobotState {
   private final TimeInterpolatableBuffer<Pose2d> poseBuffer =
       TimeInterpolatableBuffer.createBuffer(poseBufferSizeSeconds);
 
+  // fudge factor to multiple the maximum velocity and omega by
+  // when checking whether currently estimated deltas are outside
+  // of reasonable range resulting in observation being dropped
+  private static final double deltaOverflowFactor = 3;
+  private final double maxAcceptableVelocityMetersPerSecond;
+  private final double maxAcceptableOmegaRadiansPerSecond;
+
+  private double prevTimestamp = -1;
   private Rotation2d prevGyroAngle = new Rotation2d();
   private SwerveDriveWheelPositions prevWheelPositions =
       new SwerveDriveWheelPositions(
@@ -38,11 +46,41 @@ public class RobotState {
 
   private RobotState() {
     kinematics = DriveConstants.kinematics;
+    maxAcceptableVelocityMetersPerSecond =
+        DriveConstants.drivetrainConfig.maxLinearSpeed() * deltaOverflowFactor;
+    maxAcceptableOmegaRadiansPerSecond =
+        DriveConstants.drivetrainConfig.turnMotorMaxAngularSpeed() * deltaOverflowFactor;
   }
 
   /** Adds new odometry observation and updates robot pose. */
   public void addOdometryObservation(
       SwerveDriveWheelPositions wheelPositions, Rotation2d gyroAngle, double timestamp) {
+    // if we have previous measurement available estimate the velocities based
+    // on the difference in position and time; drop the observation if the estimated
+    // values exceed physical limits
+    if (prevTimestamp > 0 && prevTimestamp < timestamp) {
+      final var dt = timestamp - prevTimestamp;
+
+      for (var i = 0; i < wheelPositions.positions.length; ++i) {
+        final var distance =
+            wheelPositions.positions[i].distanceMeters
+                - prevWheelPositions.positions[i].distanceMeters;
+
+        final var angle =
+            wheelPositions.positions[i].angle.getRadians()
+                - prevWheelPositions.positions[i].angle.getRadians();
+
+        final var velocity = distance / dt;
+        final var omega = angle / dt;
+
+        if (Math.abs(velocity) >= maxAcceptableVelocityMetersPerSecond
+            || Math.abs(omega) >= maxAcceptableOmegaRadiansPerSecond) {
+          return;
+        }
+      }
+    }
+
+    prevTimestamp = timestamp;
     final var prevOdometryPose = odometryPose;
 
     // the twist represents the motion of the robot since the last
