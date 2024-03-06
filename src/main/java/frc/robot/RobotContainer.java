@@ -102,7 +102,9 @@ public class RobotContainer {
 
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
 
-    controllerDriver.a().whileTrue(pivot.enableControl());
+    controllerDriver.a().whileTrue(pivot.enableControlLoopWhileTrue());
+
+    controllerDriver.leftTrigger().whileTrue(pivot.moveArmToPosition(pivot.setPointIntake.get()));
   }
 
   public Command getAutonomousCommand() {

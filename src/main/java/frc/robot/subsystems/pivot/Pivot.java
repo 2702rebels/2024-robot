@@ -9,6 +9,7 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
@@ -30,16 +31,19 @@ public class Pivot extends SubsystemBase {
   private final LoggedTunableNumber kma =
       new LoggedTunableNumber("Pivot/TrapezoidProfile/MaxAcceleration", 0.0);
 
-  private final LoggedDashboardNumber requestedPos =
-      new LoggedDashboardNumber("Pivot/RequestedPos");
-  private final LoggedDashboardNumber goalPos = new LoggedDashboardNumber("Pivot/GoalPosition");
+  private final LoggedTunableNumber minPivotAngle =
+      new LoggedTunableNumber("Pivot/Limit/MinAngle", 20.0);
+  private final LoggedTunableNumber maxPivotAngle =
+      new LoggedTunableNumber("Pivot/Limit/MaxAngle", 100.0);
+  private final LoggedTunableNumber onGoalAllowance =
+      new LoggedTunableNumber("Pivot/OnGoalAllowance", 1.0);
 
-  private final LoggedDashboardNumber statePos = new LoggedDashboardNumber("Pivot/StatePosition");
-  private final LoggedDashboardNumber stateVel = new LoggedDashboardNumber("Pivot/StateVelocity");
-  private final LoggedDashboardNumber feedforward =
-      new LoggedDashboardNumber("Pivot/ArmFeedForward");
-  private final LoggedDashboardNumber angle = new LoggedDashboardNumber("Pivot/Angle");
-  private final LoggedDashboardNumber radians = new LoggedDashboardNumber("Pivot/Radians");
+  public final LoggedDashboardNumber setPointIntake =
+      new LoggedDashboardNumber("Pivot/SetPoints/Intake", 80);
+  public final LoggedDashboardNumber setPointAmp =
+      new LoggedDashboardNumber("Pivot/SetPoints/Amp", 100);
+  public final LoggedDashboardNumber setPointIdle =
+      new LoggedDashboardNumber("Pivot/SetPoints/Idle", 50);
 
   private ArmFeedforward armFeedforward;
   private TrapezoidProfile trapezoidProfile;
@@ -51,6 +55,8 @@ public class Pivot extends SubsystemBase {
 
   private final PivotIO pivotMotor;
   private final PivotIOInputsAutoLogged motorInputs = new PivotIOInputsAutoLogged();
+
+  private double requestedPosInDeg = 0;
 
   /** Creates a new Pivot. */
   public Pivot(PivotIO pivot) {
@@ -85,16 +91,8 @@ public class Pivot extends SubsystemBase {
           new TrapezoidProfile(new TrapezoidProfile.Constraints(kmv.get(), kma.get()));
     }
 
-    if (requestedPos.get() > 90) {
-      goalPos.set(90);
-    } else if (requestedPos.get() < 10) {
-      goalPos.set(10);
-    } else {
-      goalPos.set(requestedPos.get());
-    }
-
     // Convert from degrees to radians.
-    goal.position = goalPos.get() * (Math.PI / 180);
+    goal.position = requestedPosInDeg * (Math.PI / 180);
     state.position = motorInputs.measuredPositionRadians;
     state.velocity = motorInputs.measuredVelocityRadiansPerSecond;
     state =
@@ -104,12 +102,13 @@ public class Pivot extends SubsystemBase {
             goal); // This calulate method is doing at least two new allocaitons...
     double ff = armFeedforward.calculate(state.position, state.velocity);
 
-    // Update dashboard values.
-    statePos.set(state.position);
-    stateVel.set(state.velocity);
-    feedforward.set(ff);
-    radians.set(motorInputs.measuredPositionRadians);
-    angle.set(motorInputs.measuredPositionRadians * (180 / Math.PI));
+    Logger.recordOutput("Pivot/RequestedPosition", requestedPosInDeg);
+    Logger.recordOutput("Pivot/StatePosition", state.position);
+    Logger.recordOutput("Pivot/StateVelocity", state.velocity);
+    Logger.recordOutput("Pivot/ArmFeedForward", ff);
+    Logger.recordOutput("Pivot/PositionRadians", motorInputs.measuredPositionRadians);
+    Logger.recordOutput(
+        "Pivot/PositionAngle", motorInputs.measuredPositionRadians * (180 / Math.PI));
 
     if (enable) {
       pivotMotor.setJointAngle(state.position, ff);
@@ -118,8 +117,35 @@ public class Pivot extends SubsystemBase {
     }
   }
 
-  /** Enables the pid while command is running. Stops it when command ends. */
-  public Command enableControl() {
+  /** Sets the requested angle for the pivot's control loop. */
+  private void setRequestedAngle(double angle) {
+    if (angle < minPivotAngle.get()) {
+      requestedPosInDeg = minPivotAngle.get();
+    } else if (angle > maxPivotAngle.get()) {
+      requestedPosInDeg = maxPivotAngle.get();
+    } else {
+      requestedPosInDeg = angle;
+    }
+    System.out.println(
+        "Pivot Requested angle of: " + angle + ". Setting angle to: " + requestedPosInDeg + ".");
+  }
+
+  /** Returns the pivot's current angle. */
+  public double getCurrentAngle() {
+    return motorInputs.measuredPositionRadians * (180 / Math.PI);
+  }
+
+  public boolean isAtGoal() {
+    double angle = getCurrentAngle();
+    if (angle < requestedPosInDeg + onGoalAllowance.get()
+        && angle > requestedPosInDeg - onGoalAllowance.get()) {
+      return true;
+    }
+    return false;
+  }
+
+  /** Enables the control loop while command is running. Stops it when command ends. */
+  public Command enableControlLoopWhileTrue() {
     return Commands.startEnd(
         () -> {
           enable = true;
@@ -130,11 +156,34 @@ public class Pivot extends SubsystemBase {
         this);
   }
 
-  /** Disables control. */
-  public Command disableControl() {
+  /** Enables the control loop. */
+  public Command enableControlLoop() {
+    return Commands.runOnce(
+        () -> {
+          enable = true;
+        },
+        this);
+  }
+
+  /** Disables the control loop. */
+  public Command disableControlLoop() {
     return Commands.runOnce(
         () -> {
           enable = false;
+        },
+        this);
+  }
+
+  /** Commands the arm to a position, ending the command when it arrives. */
+  public Command moveArmToPosition(double angle) {
+    return new FunctionalCommand(
+        () -> {
+          setRequestedAngle(angle);
+        },
+        null,
+        null,
+        () -> {
+          return isAtGoal();
         },
         this);
   }
