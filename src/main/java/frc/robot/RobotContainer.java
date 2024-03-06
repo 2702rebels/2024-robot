@@ -157,45 +157,6 @@ public class RobotContainer {
                 controllerRumbleCommandFactory.apply(0.2)));
   }
 
-  /**
-   * Use this method to configure haptic feedback to the driver / operator when certain game
-   * milestones have been reached, e.g. end game.
-   */
-  private void configureEndgameAlerts() {
-    Function<Double, Command> controllerRumbleCommandFactory =
-        time ->
-            Commands.sequence(
-                Commands.runOnce(
-                    () -> {
-                      controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 1.0);
-                    }),
-                Commands.waitSeconds(time),
-                Commands.runOnce(
-                    () -> {
-                      controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0);
-                    }));
-
-    new Trigger(
-            () ->
-                DriverStation.isTeleopEnabled()
-                    && DriverStation.getMatchTime() > 0
-                    && DriverStation.getMatchTime() <= Math.round(endgameAlert1.get()))
-        .onTrue(controllerRumbleCommandFactory.apply(0.5));
-
-    new Trigger(
-            () ->
-                DriverStation.isTeleopEnabled()
-                    && DriverStation.getMatchTime() > 0
-                    && DriverStation.getMatchTime() <= Math.round(endgameAlert2.get()))
-        .onTrue(
-            Commands.sequence(
-                controllerRumbleCommandFactory.apply(0.2),
-                Commands.waitSeconds(0.1),
-                controllerRumbleCommandFactory.apply(0.2),
-                Commands.waitSeconds(0.1),
-                controllerRumbleCommandFactory.apply(0.2)));
-  }
-
   public Command getAutonomousCommand() {
     return autoChooser.get();
   }
