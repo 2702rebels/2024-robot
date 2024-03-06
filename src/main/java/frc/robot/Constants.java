@@ -26,4 +26,7 @@ public final class Constants {
 
   /** Odometry frequency (Hz) */
   public static final int odometryFrequency = 200;
+
+  /** Digital IO port the beambreak is plugged into. */
+  public static final int SHOOTER_BEAMBREAK = 8;
 }

@@ -21,6 +21,10 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOSparkMax;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.subsystems.shooter.ShooterIOSparkMaxes;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.Function;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -28,6 +32,7 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 public class RobotContainer {
   // subsystems
   private final Drive drive;
+  private final Shooter shooter;
   // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
 
   // driver controller
@@ -43,6 +48,7 @@ public class RobotContainer {
       new LoggedTunableNumber("Endgame/Alert 2", 10.0);
 
   public RobotContainer() {
+
     switch (Constants.currentMode) {
       case REAL:
         // real robot, instantiate hardware IO implementations
@@ -54,16 +60,20 @@ public class RobotContainer {
                         DriveConstants.moduleConfigs[index],
                         DriveConstants.moduleAngularOffsets[index],
                         DriveConstants.drivetrainConfig));
+
+        shooter = new Shooter(new ShooterIOSparkMaxes());
         break;
 
       case SIM:
         // sim robot, instantiate physics sim IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
+        shooter = new Shooter(new ShooterIOSim());
         break;
 
       default:
         // replayed robot, disable IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
+        shooter = new Shooter(new ShooterIO() {});
         break;
     }
 
@@ -105,6 +115,15 @@ public class RobotContainer {
         .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
 
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
+
+    controllerDriver
+        .rightTrigger()
+        .whileTrue(
+            shooter.shoot(
+                3000,
+                () -> {
+                  return true;
+                }));
   }
 
   /**
