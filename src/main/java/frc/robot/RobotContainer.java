@@ -31,6 +31,10 @@ import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.intake.IntakeIOSparkMax;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.Function;
+import frc.robot.subsystems.pivot.Pivot;
+import frc.robot.subsystems.pivot.PivotIO;
+import frc.robot.subsystems.pivot.PivotIOSim;
+import frc.robot.subsystems.pivot.PivotIOSparkMax;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
@@ -39,6 +43,7 @@ public class RobotContainer {
   private final Shooter shooter;
   // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
   private final Intake intake;
+  private final Pivot pivot;
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -54,6 +59,7 @@ public class RobotContainer {
 
   public RobotContainer() {
 
+
     switch (Constants.currentMode) {
       case REAL:
         // real robot, instantiate hardware IO implementations
@@ -68,6 +74,7 @@ public class RobotContainer {
 
         shooter = new Shooter(new ShooterIOSparkMaxes());
         intake = new Intake(new IntakeIOSparkMax());
+        pivot = new Pivot(new PivotIOSparkMax(CanID.MOTOR_PIVOT));
         break;
 
       case SIM:
@@ -75,6 +82,7 @@ public class RobotContainer {
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
         shooter = new Shooter(new ShooterIOSim());
         intake = new Intake(new IntakeIOSim());
+        pivot = new Pivot(new PivotIOSim());
         break;
 
       default:
@@ -82,6 +90,7 @@ public class RobotContainer {
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
         shooter = new Shooter(new ShooterIO() {});
         intake = new Intake(new IntakeIO() {});
+        pivot = new Pivot(new PivotIO() {});
         break;
     }
 
@@ -174,6 +183,10 @@ public class RobotContainer {
                 controllerRumbleCommandFactory.apply(0.2),
                 Commands.waitSeconds(0.1),
                 controllerRumbleCommandFactory.apply(0.2)));
+
+    controllerDriver.a().whileTrue(pivot.enableControlLoopWhileTrue());
+
+    controllerDriver.leftTrigger().whileTrue(pivot.moveArmToPosition(pivot.setPointIntake.get()));
   }
 
   public Command getAutonomousCommand() {
