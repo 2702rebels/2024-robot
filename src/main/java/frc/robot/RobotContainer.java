@@ -21,6 +21,10 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOSparkMax;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.subsystems.shooter.ShooterIOSparkMaxes;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOSim;
@@ -32,6 +36,7 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 public class RobotContainer {
   // subsystems
   private final Drive drive;
+  private final Shooter shooter;
   // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
   private final Intake intake;
 
@@ -48,6 +53,7 @@ public class RobotContainer {
       new LoggedTunableNumber("Endgame/Alert 2", 10.0);
 
   public RobotContainer() {
+
     switch (Constants.currentMode) {
       case REAL:
         // real robot, instantiate hardware IO implementations
@@ -59,18 +65,22 @@ public class RobotContainer {
                         DriveConstants.moduleConfigs[index],
                         DriveConstants.moduleAngularOffsets[index],
                         DriveConstants.drivetrainConfig));
+
+        shooter = new Shooter(new ShooterIOSparkMaxes());
         intake = new Intake(new IntakeIOSparkMax());
         break;
 
       case SIM:
         // sim robot, instantiate physics sim IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
+        shooter = new Shooter(new ShooterIOSim());
         intake = new Intake(new IntakeIOSim());
         break;
 
       default:
         // replayed robot, disable IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
+        shooter = new Shooter(new ShooterIO() {});
         intake = new Intake(new IntakeIO() {});
         break;
     }
@@ -116,6 +126,15 @@ public class RobotContainer {
 
     controllerDriver.leftTrigger().whileTrue(intake.intake());
     controllerDriver.y().whileTrue(intake.outake());
+
+    controllerDriver
+        .rightTrigger()
+        .whileTrue(
+            shooter.shoot(
+                3000,
+                () -> {
+                  return true;
+                }));
   }
 
   /**

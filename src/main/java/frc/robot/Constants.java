@@ -30,4 +30,7 @@ public final class Constants {
   public static final class IntakeConstants {
     public static final int MotorControllerCANId = 11;
   }
+
+  /** Digital IO port the beambreak is plugged into. */
+  public static final int SHOOTER_BEAMBREAK = 8;
 }
