@@ -21,29 +21,29 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOSparkMax;
-import frc.robot.subsystems.shooter.Shooter;
-import frc.robot.subsystems.shooter.ShooterIO;
-import frc.robot.subsystems.shooter.ShooterIOSim;
-import frc.robot.subsystems.shooter.ShooterIOSparkMaxes;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.intake.IntakeIOSparkMax;
-import frc.robot.util.LoggedTunableNumber;
-import java.util.function.Function;
 import frc.robot.subsystems.pivot.Pivot;
 import frc.robot.subsystems.pivot.PivotIO;
 import frc.robot.subsystems.pivot.PivotIOSim;
 import frc.robot.subsystems.pivot.PivotIOSparkMax;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.subsystems.shooter.ShooterIOSparkMaxes;
+import frc.robot.util.LoggedTunableNumber;
+import java.util.function.Function;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
   // subsystems
   private final Drive drive;
-  private final Shooter shooter;
-  // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
   private final Intake intake;
   private final Pivot pivot;
+  private final Shooter shooter;
+  // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -59,7 +59,6 @@ public class RobotContainer {
 
   public RobotContainer() {
 
-
     switch (Constants.currentMode) {
       case REAL:
         // real robot, instantiate hardware IO implementations
@@ -72,25 +71,25 @@ public class RobotContainer {
                         DriveConstants.moduleAngularOffsets[index],
                         DriveConstants.drivetrainConfig));
 
-        shooter = new Shooter(new ShooterIOSparkMaxes());
         intake = new Intake(new IntakeIOSparkMax());
         pivot = new Pivot(new PivotIOSparkMax(CanID.MOTOR_PIVOT));
+        shooter = new Shooter(new ShooterIOSparkMaxes());
         break;
 
       case SIM:
         // sim robot, instantiate physics sim IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
-        shooter = new Shooter(new ShooterIOSim());
         intake = new Intake(new IntakeIOSim());
         pivot = new Pivot(new PivotIOSim());
+        shooter = new Shooter(new ShooterIOSim());
         break;
 
       default:
         // replayed robot, disable IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
-        shooter = new Shooter(new ShooterIO() {});
         intake = new Intake(new IntakeIO() {});
         pivot = new Pivot(new PivotIO() {});
+        shooter = new Shooter(new ShooterIO() {});
         break;
     }
 
@@ -130,12 +129,13 @@ public class RobotContainer {
     controllerDriver
         .leftBumper()
         .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
-
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
 
+    // Intake
     controllerDriver.leftTrigger().whileTrue(intake.intake());
     controllerDriver.y().whileTrue(intake.outake());
 
+    // Shooting
     controllerDriver
         .rightTrigger()
         .whileTrue(

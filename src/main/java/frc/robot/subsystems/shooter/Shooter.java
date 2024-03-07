@@ -80,7 +80,9 @@ public class Shooter extends SubsystemBase {
           subsystemIO.stopFlywheel();
           subsystemIO.stopFeed();
         },
-        null,
+        () -> {
+          return false;
+        },
         this);
   }
 

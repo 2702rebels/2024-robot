@@ -180,8 +180,8 @@ public class Pivot extends SubsystemBase {
         () -> {
           setRequestedAngle(angle);
         },
-        null,
-        null,
+        () -> {},
+        (interupted) -> {},
         () -> {
           return isAtGoal();
         },
