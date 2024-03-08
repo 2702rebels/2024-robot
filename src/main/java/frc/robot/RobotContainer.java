@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -132,18 +133,24 @@ public class RobotContainer {
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
 
     // Intake
-    controllerDriver.leftTrigger().whileTrue(intake.intake());
+    controllerDriver
+        .leftTrigger()
+        .whileTrue(pivot.moveArmToPosition(pivot.setPointIntake.get()).andThen(intake.intake()));
     controllerDriver.y().whileTrue(intake.outake());
 
     // Shooting
     controllerDriver
         .rightTrigger()
         .whileTrue(
-            shooter.shoot(
-                3000,
-                () -> {
-                  return true;
-                }));
+            Commands.parallel(
+                pivot.moveArmToPosition(pivot.setPointShoot_Base.get()),
+                shooter.shoot(3000, () -> pivot.isAtGoal())));
+    controllerDriver
+        .a()
+        .whileTrue(
+            Commands.parallel(
+                pivot.moveArmToPosition(pivot.setPointShoot_Amp.get()),
+                shooter.shoot(1000, () -> pivot.isAtGoal())));
   }
 
   /**
@@ -183,13 +190,13 @@ public class RobotContainer {
                 controllerRumbleCommandFactory.apply(0.2),
                 Commands.waitSeconds(0.1),
                 controllerRumbleCommandFactory.apply(0.2)));
-
-    controllerDriver.a().whileTrue(pivot.enableControlLoopWhileTrue());
-
-    controllerDriver.leftTrigger().whileTrue(pivot.moveArmToPosition(pivot.setPointIntake.get()));
   }
 
   public Command getAutonomousCommand() {
     return autoChooser.get();
+  }
+
+  public void onDisable() {
+    CommandScheduler.getInstance().schedule(pivot.disableControlLoop());
   }
 }

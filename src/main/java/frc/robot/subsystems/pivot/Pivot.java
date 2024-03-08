@@ -17,14 +17,14 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardNumber;
 
 public class Pivot extends SubsystemBase {
   private static final double LOOP_PERIOD_SECS = 0.02;
-  private final LoggedTunableNumber kp = new LoggedTunableNumber("Pivot/PID/P", 0.0);
+  private final LoggedTunableNumber kp = new LoggedTunableNumber("Pivot/PID/P", 1.0);
   private final LoggedTunableNumber ki = new LoggedTunableNumber("Pivot/PID/I", 0.0);
   private final LoggedTunableNumber kd = new LoggedTunableNumber("Pivot/PID/D", 0.0);
 
-  private final LoggedTunableNumber ks = new LoggedTunableNumber("Pivot/ArmFeedForward/KS", 0.0);
-  private final LoggedTunableNumber kg = new LoggedTunableNumber("Pivot/ArmFeedForward/KG", 0.0);
-  private final LoggedTunableNumber kv = new LoggedTunableNumber("Pivot/ArmFeedForward/KV", 0.0);
-  private final LoggedTunableNumber ka = new LoggedTunableNumber("Pivot/ArmFeedForward/KA", 0.0);
+  private final LoggedTunableNumber ks = new LoggedTunableNumber("Pivot/ArmFeedForward/KS", 0.01);
+  private final LoggedTunableNumber kg = new LoggedTunableNumber("Pivot/ArmFeedForward/KG", 0.44);
+  private final LoggedTunableNumber kv = new LoggedTunableNumber("Pivot/ArmFeedForward/KV", 2.57);
+  private final LoggedTunableNumber ka = new LoggedTunableNumber("Pivot/ArmFeedForward/KA", 0.02);
 
   private final LoggedTunableNumber kmv =
       new LoggedTunableNumber("Pivot/TrapezoidProfile/MaxVelocity", 0.0);
@@ -38,12 +38,14 @@ public class Pivot extends SubsystemBase {
   private final LoggedTunableNumber onGoalAllowance =
       new LoggedTunableNumber("Pivot/OnGoalAllowance", 1.0);
 
-  public final LoggedDashboardNumber setPointIntake =
-      new LoggedDashboardNumber("Pivot/SetPoints/Intake", 80);
-  public final LoggedDashboardNumber setPointAmp =
-      new LoggedDashboardNumber("Pivot/SetPoints/Amp", 100);
   public final LoggedDashboardNumber setPointIdle =
       new LoggedDashboardNumber("Pivot/SetPoints/Idle", 50);
+  public final LoggedDashboardNumber setPointIntake =
+      new LoggedDashboardNumber("Pivot/SetPoints/Intake", 80);
+  public final LoggedDashboardNumber setPointShoot_Amp =
+      new LoggedDashboardNumber("Pivot/SetPoints/AmpShot", 100);
+  public final LoggedDashboardNumber setPointShoot_Base =
+      new LoggedDashboardNumber("Pivot/SetPoints/BaseShot", 50);
 
   private ArmFeedforward armFeedforward;
   private TrapezoidProfile trapezoidProfile;
@@ -51,7 +53,7 @@ public class Pivot extends SubsystemBase {
   private TrapezoidProfile.State state = new State(0, 0);
   private TrapezoidProfile.State goal = new State(0, 0);
 
-  private boolean enable = false;
+  private boolean enabled = false;
 
   private final PivotIO pivotMotor;
   private final PivotIOInputsAutoLogged motorInputs = new PivotIOInputsAutoLogged();
@@ -110,7 +112,7 @@ public class Pivot extends SubsystemBase {
     Logger.recordOutput(
         "Pivot/PositionAngle", motorInputs.measuredPositionRadians * (180 / Math.PI));
 
-    if (enable) {
+    if (enabled) {
       pivotMotor.setJointAngle(state.position, ff);
     } else {
       pivotMotor.stop();
@@ -148,10 +150,12 @@ public class Pivot extends SubsystemBase {
   public Command enableControlLoopWhileTrue() {
     return Commands.startEnd(
         () -> {
-          enable = true;
+          enabled = true;
+          System.out.println("Enabling pivot control loop flag.");
         },
         () -> {
-          enable = false;
+          enabled = false;
+          System.out.println("Disabling pivot control loop flag.");
         },
         this);
   }
@@ -160,7 +164,8 @@ public class Pivot extends SubsystemBase {
   public Command enableControlLoop() {
     return Commands.runOnce(
         () -> {
-          enable = true;
+          enabled = true;
+          System.out.println("Enabling pivot control loop flag.");
         },
         this);
   }
@@ -168,16 +173,22 @@ public class Pivot extends SubsystemBase {
   /** Disables the control loop. */
   public Command disableControlLoop() {
     return Commands.runOnce(
-        () -> {
-          enable = false;
-        },
-        this);
+            () -> {
+              enabled = false;
+              System.out.println("Disabling pivot control loop flag.");
+            },
+            this)
+        .ignoringDisable(true);
   }
 
   /** Commands the arm to a position, ending the command when it arrives. */
   public Command moveArmToPosition(double angle) {
     return new FunctionalCommand(
         () -> {
+          if (!enabled) {
+            enabled = true;
+            System.out.println("Enabling pivot control loop flag.");
+          }
           setRequestedAngle(angle);
         },
         () -> {},
