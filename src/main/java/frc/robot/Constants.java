@@ -26,4 +26,6 @@ public final class Constants {
 
   /** Odometry frequency (Hz) */
   public static final int odometryFrequency = 200;
+
+  public static final int CLIMB_SERVO = 2;
 }
