@@ -1,5 +1,6 @@
 package frc.robot;
 
+import com.choreo.lib.ChoreoTrajectory;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -14,6 +15,8 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.DriveCommands;
+import frc.robot.commands.DriveToNote;
+import frc.robot.commands.DriveTrajectory;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -21,14 +24,22 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOSparkMax;
+import frc.robot.subsystems.vision.NoteDetector;
+import frc.robot.subsystems.vision.NoteDetectorIOCamera;
 import frc.robot.util.LoggedTunableNumber;
+import frc.robot.util.TrajectoryLoader;
+import java.util.Map;
 import java.util.function.Function;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
   // subsystems
   private final Drive drive;
+  private final NoteDetector noteDetector = new NoteDetector(new NoteDetectorIOCamera());
   // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
+
+  // loaded chore trajectories
+  private final Map<String, ChoreoTrajectory> trajectories;
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -67,11 +78,23 @@ public class RobotContainer {
         break;
     }
 
+    // load trajectories from the file system
+    trajectories = TrajectoryLoader.loadChoreoTrajectories();
+
     // set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     configureBindings();
     configureEndgameAlerts();
+
+    // testing
+    controllerDriver.a().onTrue(new DriveTrajectory(trajectories.get("Test"), true, true, drive));
+    controllerDriver
+        .rightTrigger()
+        .whileTrue(
+            new DriveToNote(drive, noteDetector, false)
+                .until(() -> !noteDetector.hasTrackedNote())
+                .withName("DriveToNote"));
   }
 
   /**

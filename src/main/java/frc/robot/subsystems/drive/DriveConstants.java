@@ -54,6 +54,7 @@ public final class DriveConstants {
           Units.inchesToMeters(21.5), // width X
           Units.inchesToMeters(21.5), // width Y
           5.0, // max linear speed
+          5.0, // max linear acceleration
           driveMotorConfig,
           turnMotorConfig);
 
@@ -112,6 +113,7 @@ public final class DriveConstants {
       double trackWidthX,
       double trackWidthY,
       double maxLinearSpeed,
+      double maxLinearAcceleration,
       MotorConfig driveMotor,
       MotorConfig turnMotor) {
     public double driveBaseRadius() {
@@ -126,6 +128,11 @@ public final class DriveConstants {
     /** Maximum commandable chassis angular speed */
     public double maxAngularSpeed() {
       return maxLinearSpeed / driveBaseRadius();
+    }
+
+    /** Maximum commandable chassis angular acceleration */
+    public double maxAngularAcceleration() {
+      return maxAngularSpeed();
     }
 
     /** Factor to convert internal encoder rotations into distance */

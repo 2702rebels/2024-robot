@@ -8,6 +8,8 @@ import com.pathplanner.lib.util.ReplanningConfig;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveWheelPositions;
@@ -39,6 +41,7 @@ public class Drive extends SubsystemBase {
   private final SwerveDriveWheelPositions[] sampledWheelPositions;
 
   private final RobotState robotState;
+  private Twist2d fieldVelocity = new Twist2d();
 
   private final ChassisSpeeds ZeroChassisSpeeds = new ChassisSpeeds();
   private final SwerveModuleState[] stopXstates =
@@ -154,6 +157,20 @@ public class Drive extends SubsystemBase {
       measuredStates[index].speedMetersPerSecond = moduleState.speedMetersPerSecond;
       index++;
     }
+
+    // update field velocity
+    final var chassisSpeeds = DriveConstants.kinematics.toChassisSpeeds(measuredStates);
+    final var linearFieldVelocity =
+        new Translation2d(chassisSpeeds.vxMetersPerSecond, chassisSpeeds.vyMetersPerSecond)
+            .rotateBy(getRotation());
+
+    fieldVelocity =
+        new Twist2d(
+            linearFieldVelocity.getX(),
+            linearFieldVelocity.getY(),
+            gyroInputs.connected
+                ? gyroInputs.yawVelocityRadPerSec
+                : chassisSpeeds.omegaRadiansPerSecond);
   }
 
   /** Updates robot state based from odometry observations. */
@@ -359,6 +376,19 @@ public class Drive extends SubsystemBase {
     return robotState.getEstimatedPose().getRotation();
   }
 
+  /** Returns the yaw (rotational) velocity in radians per sec */
+  public double getYawVelocityRadPerSec() {
+    return gyroInputs.yawVelocityRadPerSec;
+  }
+
+  /**
+   * Returns the measured X, Y, and theta field velocities in meters per sec. The components of the
+   * twist are velocities and NOT changes in position.
+   */
+  public Twist2d getFieldVelocity() {
+    return fieldVelocity;
+  }
+
   /** Returns the maximum linear speed in meters per sec */
   public double getMaxLinearSpeedMetersPerSec() {
     return DriveConstants.drivetrainConfig.maxLinearSpeed();
@@ -397,7 +427,7 @@ public class Drive extends SubsystemBase {
     return orientationController.calculate(getRotation().getRadians());
   }
 
-  /** Determines whether orientation lock is enabled. */
+  /** Returns an indicator that orientation lock is enabled. */
   @AutoLogOutput(key = "Drive/OrientationLock/Enabled")
   public boolean hasOrientationLock() {
     return orientationLockEnabled;
