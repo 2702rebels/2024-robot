@@ -18,9 +18,9 @@ public class IntakeIOSparkMax implements IntakeIO {
 
   public IntakeIOSparkMax() {
     motor.restoreFactoryDefaults();
-    motor.setSmartCurrentLimit(30);
+    motor.setSmartCurrentLimit(60);
     motor.setIdleMode(IdleMode.kCoast);
-    motor.setInverted(true);
+    motor.setInverted(false);
     motor.burnFlash();
   }
 

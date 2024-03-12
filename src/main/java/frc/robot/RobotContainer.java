@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
@@ -99,6 +100,13 @@ public class RobotContainer {
 
     configureBindings();
     configureEndgameAlerts();
+
+    // sysid routines
+    autoChooser.addOption(
+        "Shooter SysId (Quasistatic Forward)",
+        shooter.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    autoChooser.addOption(
+        "Shooter SysId (Dynamic Forward)", shooter.sysIdDynamic(SysIdRoutine.Direction.kForward));
   }
 
   /**
@@ -135,7 +143,8 @@ public class RobotContainer {
     // Intake
     controllerDriver
         .leftTrigger()
-        .whileTrue(pivot.moveArmToPosition(pivot.setPointIntake.get()).andThen(intake.intake()));
+        .whileTrue(
+            pivot.moveArmToPosition(90).andThen(intake.intake().alongWith(shooter.feedIn())));
     controllerDriver.y().whileTrue(intake.outake());
 
     // Shooting
@@ -144,13 +153,37 @@ public class RobotContainer {
         .whileTrue(
             Commands.parallel(
                 pivot.moveArmToPosition(pivot.setPointShoot_Base.get()),
-                shooter.shoot(3000, () -> pivot.isAtGoal())));
+                shooter.shoot(() -> pivot.isAtGoal())));
+    // Amp
+    // controllerDriver
+    //     .a()
+    //     .onTrue(
+    //         Commands.parallel(pivot.moveArmToPosition(90), shooter.spinUp(850))
+    //             .until(() -> pivot.isAtGoal() && shooter.isAtSpeed(0))
+    //             .andThen(shooter.feedOut(), pivot.moveArmToPosition(110))
+    //             .andThen(shooter.stop(), pivot.moveArmToPosition(20).withTimeout(0.5)));
+
     controllerDriver
         .a()
-        .whileTrue(
+        .onTrue(
             Commands.parallel(
-                pivot.moveArmToPosition(pivot.setPointShoot_Amp.get()),
-                shooter.shoot(1000, () -> pivot.isAtGoal())));
+                pivot.moveArmToPosition(115),
+                shooter.shoot(
+                    900,
+                    () -> {
+                      return pivot.isAtGoal();
+                    })));
+
+    // controllerDriver
+    //     .back()
+    //     .whileTrue(
+    //         Commands.parallel(
+    //             pivot.moveArmToPosition(25), shooter.shoot(4000, () -> pivot.isAtGoal())));
+
+    controllerDriver.back().onTrue(shooter.spinUp(800));
+    controllerDriver
+        .povDown()
+        .onTrue(Commands.parallel(pivot.moveArmToPosition(20), shooter.stop()));
   }
 
   /**
@@ -170,6 +203,8 @@ public class RobotContainer {
                     () -> {
                       controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0);
                     }));
+
+    new Trigger(() -> shooter.hasGamePiece()).onTrue(controllerRumbleCommandFactory.apply(0.3));
 
     new Trigger(
             () ->

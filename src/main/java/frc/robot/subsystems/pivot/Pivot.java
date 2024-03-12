@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems.pivot;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
@@ -32,9 +33,9 @@ public class Pivot extends SubsystemBase {
       new LoggedTunableNumber("Pivot/TrapezoidProfile/MaxAcceleration", 0.0);
 
   private final LoggedTunableNumber minPivotAngle =
-      new LoggedTunableNumber("Pivot/Limit/MinAngle", 20.0);
+      new LoggedTunableNumber("Pivot/Limit/MinAngle", 15.0);
   private final LoggedTunableNumber maxPivotAngle =
-      new LoggedTunableNumber("Pivot/Limit/MaxAngle", 100.0);
+      new LoggedTunableNumber("Pivot/Limit/MaxAngle", 110.0);
   private final LoggedTunableNumber onGoalAllowance =
       new LoggedTunableNumber("Pivot/OnGoalAllowance", 1.0);
 
@@ -43,7 +44,7 @@ public class Pivot extends SubsystemBase {
   public final LoggedDashboardNumber setPointIntake =
       new LoggedDashboardNumber("Pivot/SetPoints/Intake", 80);
   public final LoggedDashboardNumber setPointShoot_Amp =
-      new LoggedDashboardNumber("Pivot/SetPoints/AmpShot", 100);
+      new LoggedDashboardNumber("Pivot/SetPoints/AmpShot", 110);
   public final LoggedDashboardNumber setPointShoot_Base =
       new LoggedDashboardNumber("Pivot/SetPoints/BaseShot", 50);
 
@@ -121,15 +122,7 @@ public class Pivot extends SubsystemBase {
 
   /** Sets the requested angle for the pivot's control loop. */
   private void setRequestedAngle(double angle) {
-    if (angle < minPivotAngle.get()) {
-      requestedPosInDeg = minPivotAngle.get();
-    } else if (angle > maxPivotAngle.get()) {
-      requestedPosInDeg = maxPivotAngle.get();
-    } else {
-      requestedPosInDeg = angle;
-    }
-    System.out.println(
-        "Pivot Requested angle of: " + angle + ". Setting angle to: " + requestedPosInDeg + ".");
+    requestedPosInDeg = MathUtil.clamp(angle, minPivotAngle.get(), maxPivotAngle.get());
   }
 
   /** Returns the pivot's current angle. */
@@ -144,6 +137,10 @@ public class Pivot extends SubsystemBase {
       return true;
     }
     return false;
+  }
+
+  public double getAngle() {
+    return getCurrentAngle();
   }
 
   /** Enables the control loop while command is running. Stops it when command ends. */

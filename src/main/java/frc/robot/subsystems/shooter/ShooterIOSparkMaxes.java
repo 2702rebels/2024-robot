@@ -35,6 +35,7 @@ public class ShooterIOSparkMaxes implements ShooterIO {
     flywheelLeader.restoreFactoryDefaults();
     flywheelLeader.setSmartCurrentLimit(60);
     flywheelLeader.setIdleMode(IdleMode.kCoast);
+    flywheelLeader.enableVoltageCompensation(12);
     flywheelLeader.burnFlash();
 
     // Configure and save settings to follower motor controller.
@@ -42,38 +43,47 @@ public class ShooterIOSparkMaxes implements ShooterIO {
     flywheelFollower.follow(flywheelLeader, true);
     flywheelFollower.setSmartCurrentLimit(60);
     flywheelFollower.setIdleMode(IdleMode.kCoast);
+    flywheelPID.setOutputRange(
+        0, 1.0); // Set this so it can't apply negative power to try and pull the flywheel down to
+    // speed.
     flywheelFollower.burnFlash();
 
     // Configure and save settings to the feeder motor controller.
     feederMotorController.restoreFactoryDefaults();
     feederMotorController.setInverted(true);
     feederMotorController.setIdleMode(IdleMode.kBrake);
+    feedPID.setOutputRange(0, 1.0);
     feederMotorController.burnFlash();
   }
 
   @Override
   public void updateInputs(ShooterIOInputs inputs) {
     inputs.flywheelVelocity = flywheelEncoder.getVelocity();
-    inputs.flywheelAppliedVolts = flywheelLeader.getBusVoltage();
+    inputs.flywheelPosition = flywheelEncoder.getPosition();
+    inputs.flywheelAppliedVolts =
+        flywheelLeader.getAppliedOutput() * flywheelLeader.getBusVoltage();
     inputs.flywheelCurrentAmps = flywheelLeader.getOutputCurrent();
 
     inputs.followerVelocity = followerEncoder.getVelocity();
-    inputs.followerAppliedVolts = flywheelFollower.getBusVoltage();
+    inputs.followerAppliedVolts =
+        flywheelFollower.getAppliedOutput() * flywheelFollower.getBusVoltage();
     inputs.followerCurrentAmps = flywheelFollower.getOutputCurrent();
 
     inputs.feedVelocity = feedEncoder.getVelocity();
     inputs.feedPosition = feedEncoder.getPosition();
-    inputs.feedAppliedVolts = feederMotorController.getBusVoltage();
+    inputs.feedAppliedVolts =
+        feederMotorController.getAppliedOutput() * feederMotorController.getBusVoltage();
     inputs.feedCurrentAmps = feederMotorController.getOutputCurrent();
 
-    inputs.feedBeamBreak = beambreak.get();
+    inputs.feedBeamBreak = !beambreak.get();
   }
 
   @Override
-  public void configureFlywheelPID(double kP, double kI, double kD) {
+  public void configureFlywheelPID(double kP, double kI, double kD, double kff, double staticGain) {
     flywheelPID.setP(kP);
     flywheelPID.setI(kI);
     flywheelPID.setD(kD);
+    flywheelPID.setFF(kff);
   }
 
   @Override
@@ -88,15 +98,22 @@ public class ShooterIOSparkMaxes implements ShooterIO {
   }
 
   @Override
-  public void configureFeedPID(double kP, double kI, double kD) {
+  public void configureFeedPID(double kP, double kI, double kD, double kFF) {
     feedPID.setP(kP);
     feedPID.setI(kI);
     feedPID.setD(kD);
+    feedPID.setFF(kFF);
   }
 
   @Override
   public void setFeedSpeed(double rpm) {
-    feedPID.setReference(rpm, ControlType.kVelocity);
+    final var ff = 0.2265; // + rpm * 0.0022
+    feedPID.setReference(rpm, ControlType.kVelocity, 0, ff);
+  }
+
+  @Override
+  public void setFeedPercentOutput(double percent) {
+    feederMotorController.set(percent);
   }
 
   @Override
@@ -111,5 +128,10 @@ public class ShooterIOSparkMaxes implements ShooterIO {
     } else {
       feederMotorController.setIdleMode(IdleMode.kCoast);
     }
+  }
+
+  @Override
+  public void setVoltage(double volts) {
+    flywheelLeader.setVoltage(volts);
   }
 }

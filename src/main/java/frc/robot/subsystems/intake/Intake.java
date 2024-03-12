@@ -14,7 +14,7 @@ public class Intake extends SubsystemBase {
   IntakeIO subsystemIO;
   IntakeIOInputsAutoLogged subsystemInputs = new IntakeIOInputsAutoLogged();
 
-  LoggedTunableNumber intakeSpeed = new LoggedTunableNumber("Intake/IntakeSpeed", 0.0);
+  LoggedTunableNumber intakeSpeed = new LoggedTunableNumber("Intake/IntakeSpeed", 0.7);
 
   /** Creates a new Intake. */
   public Intake(IntakeIO intake) {
