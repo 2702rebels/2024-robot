@@ -144,25 +144,18 @@ public class RobotContainer {
     controllerDriver
         .leftTrigger()
         .whileTrue(
-            pivot.moveArmToPosition(90).andThen(intake.intake().alongWith(shooter.feedIn())));
+            pivot.moveArmToPosition(90, 3).andThen(intake.intake().alongWith(shooter.feedIn())));
     controllerDriver.y().whileTrue(intake.outake());
 
-    // Shooting
+    // Subwoofer Shoot
     controllerDriver
         .rightTrigger()
         .whileTrue(
             Commands.parallel(
-                pivot.moveArmToPosition(pivot.setPointShoot_Base.get()),
-                shooter.shoot(() -> pivot.isAtGoal())));
-    // Amp
-    // controllerDriver
-    //     .a()
-    //     .onTrue(
-    //         Commands.parallel(pivot.moveArmToPosition(90), shooter.spinUp(850))
-    //             .until(() -> pivot.isAtGoal() && shooter.isAtSpeed(0))
-    //             .andThen(shooter.feedOut(), pivot.moveArmToPosition(110))
-    //             .andThen(shooter.stop(), pivot.moveArmToPosition(20).withTimeout(0.5)));
+                pivot.moveArmToPosition(50),
+                shooter.shoot(3000, () -> pivot.isAtGoal())));
 
+    // Amp
     controllerDriver
         .a()
         .onTrue(
@@ -174,13 +167,7 @@ public class RobotContainer {
                       return pivot.isAtGoal();
                     })));
 
-    // controllerDriver
-    //     .back()
-    //     .whileTrue(
-    //         Commands.parallel(
-    //             pivot.moveArmToPosition(25), shooter.shoot(4000, () -> pivot.isAtGoal())));
-
-    controllerDriver.back().onTrue(shooter.spinUp(800));
+    // Move to idle
     controllerDriver
         .povDown()
         .onTrue(Commands.parallel(pivot.moveArmToPosition(20), shooter.stop()));

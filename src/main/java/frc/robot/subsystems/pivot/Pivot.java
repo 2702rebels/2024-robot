@@ -14,7 +14,6 @@ import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
-import org.littletonrobotics.junction.networktables.LoggedDashboardNumber;
 
 public class Pivot extends SubsystemBase {
   private static final double LOOP_PERIOD_SECS = 0.02;
@@ -38,15 +37,6 @@ public class Pivot extends SubsystemBase {
       new LoggedTunableNumber("Pivot/Limit/MaxAngle", 110.0);
   private final LoggedTunableNumber onGoalAllowance =
       new LoggedTunableNumber("Pivot/OnGoalAllowance", 1.0);
-
-  public final LoggedDashboardNumber setPointIdle =
-      new LoggedDashboardNumber("Pivot/SetPoints/Idle", 50);
-  public final LoggedDashboardNumber setPointIntake =
-      new LoggedDashboardNumber("Pivot/SetPoints/Intake", 80);
-  public final LoggedDashboardNumber setPointShoot_Amp =
-      new LoggedDashboardNumber("Pivot/SetPoints/AmpShot", 110);
-  public final LoggedDashboardNumber setPointShoot_Base =
-      new LoggedDashboardNumber("Pivot/SetPoints/BaseShot", 50);
 
   private ArmFeedforward armFeedforward;
   private TrapezoidProfile trapezoidProfile;
@@ -130,31 +120,23 @@ public class Pivot extends SubsystemBase {
     return motorInputs.measuredPositionRadians * (180 / Math.PI);
   }
 
-  public boolean isAtGoal() {
+  /** Checks if the pivot is at it's requested goal. With + or - the allowance. */
+  public boolean isAtGoal(double allowance) {
     double angle = getCurrentAngle();
-    if (angle < requestedPosInDeg + onGoalAllowance.get()
-        && angle > requestedPosInDeg - onGoalAllowance.get()) {
+    if (angle < requestedPosInDeg + allowance && angle > requestedPosInDeg - allowance) {
       return true;
     }
     return false;
   }
 
-  public double getAngle() {
-    return getCurrentAngle();
+  /** Checks if the pivot is at it's requested goal. Uses default onGoalAllowance parameters. */
+  public boolean isAtGoal() {
+    return isAtGoal(onGoalAllowance.get());
   }
 
-  /** Enables the control loop while command is running. Stops it when command ends. */
-  public Command enableControlLoopWhileTrue() {
-    return Commands.startEnd(
-        () -> {
-          enabled = true;
-          System.out.println("Enabling pivot control loop flag.");
-        },
-        () -> {
-          enabled = false;
-          System.out.println("Disabling pivot control loop flag.");
-        },
-        this);
+  /** The current angle of the pivot. Zero degrees is horizontal with the ground. */
+  public double getAngle() {
+    return getCurrentAngle();
   }
 
   /** Enables the control loop. */
@@ -178,8 +160,8 @@ public class Pivot extends SubsystemBase {
         .ignoringDisable(true);
   }
 
-  /** Commands the arm to a position, ending the command when it arrives. */
-  public Command moveArmToPosition(double angle) {
+  /** Commands the arm to a position, ending the command when it arrives. Passing in an on goal allowance.*/
+  public Command moveArmToPosition(double angle, double allowance) {
     return new FunctionalCommand(
         () -> {
           if (!enabled) {
@@ -191,8 +173,14 @@ public class Pivot extends SubsystemBase {
         () -> {},
         (interupted) -> {},
         () -> {
-          return isAtGoal();
+          return isAtGoal(allowance);
         },
         this);
   }
+
+    /** Commands the arm to a position, ending the command when it arrives. */
+  public Command moveArmToPosition(double angle) {
+    return moveArmToPosition(angle, onGoalAllowance.get());
+  }
+
 }

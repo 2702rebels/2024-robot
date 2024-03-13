@@ -116,26 +116,6 @@ public class Shooter extends SubsystemBase {
         this);
   }
 
-  public Command shoot(BooleanSupplier okToShoot) {
-    return new FunctionalCommand(
-        () -> {
-          subsystemIO.setFlywheelSpeed(shooterRPM.get());
-        },
-        () -> {
-          if (isAtSpeed(shooterRPM.get()) && okToShoot.getAsBoolean()) {
-            subsystemIO.setFeedPercentOutput(0.5);
-          }
-        },
-        (interupted) -> {
-          subsystemIO.stopFlywheel();
-          subsystemIO.stopFeed();
-        },
-        () -> {
-          return false;
-        },
-        this);
-  }
-
   public Command spinUp(double speed) {
     return Commands.runOnce(() -> subsystemIO.setFlywheelSpeed(speed), this);
   }
