@@ -32,6 +32,8 @@ public class Shooter extends SubsystemBase {
 
   private final SysIdRoutine sysId;
 
+  private boolean feeding = false;
+
   /** Creates a new Shooter Subsystem. */
   public Shooter(ShooterIO shooter) {
     subsystemIO = shooter;
@@ -98,6 +100,10 @@ public class Shooter extends SubsystemBase {
     return subsystemInputs.beamBreakBack;
   }
 
+  public boolean isFeeding() {
+    return feeding;
+  }
+
   /**
    * Spin up the flywheel and will feed the game piece into the flywheel when it's both at speed and
    * the addtional okToShoot boolean supplier resolves to true.
@@ -133,10 +139,12 @@ public class Shooter extends SubsystemBase {
   public Command feedIn() {
     return new StartEndCommand(
             () -> {
-              subsystemIO.setFeedPercentOutput(0.3);
+              subsystemIO.setFeedPercentOutput(0.4);
+              feeding = true;
             },
             () -> {
               subsystemIO.stopFeed();
+              feeding = false;
             },
             this)
         .until(

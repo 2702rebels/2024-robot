@@ -16,7 +16,7 @@ import frc.robot.Constants;
 public class IntakeIOSparkMax implements IntakeIO {
   private CANSparkMax motor = new CANSparkMax(CanID.MOTOR_INTAKE, MotorType.kBrushless);
   private RelativeEncoder encoder = motor.getEncoder();
-  private DigitalInput beambreak = new DigitalInput(Constants.SHOOTER_BEAMBREAKFRONT);
+  private DigitalInput beambreak = new DigitalInput(Constants.SHOOTER_BEAMBREAKINTAKE);
 
   public IntakeIOSparkMax() {
     motor.restoreFactoryDefaults();

@@ -135,11 +135,11 @@ public class RobotContainer {
                     })
                 .ignoringDisable(true));
 
-    // Orientation locks
+    // Orientation locks (Red Alliance)
     controllerDriver
         .leftBumper()
-        .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(270))));
-    controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(45)));
+        .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(90))));
+    controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(-45)));
 
     // Intake
     controllerDriver
@@ -152,23 +152,25 @@ public class RobotContainer {
     // Subwoofer shot
     controllerDriver
         .rightTrigger()
-        .onTrue(Commands.parallel(pivot.moveArmToPosition(50), shooter.spinUp(3000)))
-        .whileTrue(shooter.shoot(3000, () -> pivot.isAtGoal()));
+        .whileTrue(
+            Commands.parallel(
+                pivot.moveArmToPosition(50), shooter.shoot(3000, () -> pivot.isAtGoal())))
+        .onFalse(pivot.moveArmToPosition(20, 3));
 
     // Amp
     controllerDriver
         .a()
         .onTrue(
             Commands.parallel(
-                pivot.moveArmToPosition(115),
-                shooter
-                    .shoot(
-                        900,
-                        () -> {
-                          return pivot.isAtGoal();
-                        })
-                    .until(() -> !shooter.hasGamePiece())
-                    .andThen(pivot.moveArmToPosition(20, 3))));
+                    pivot.moveArmToPosition(107, 3),
+                    shooter
+                        .shoot(
+                            900,
+                            () -> {
+                              return pivot.isAtGoal();
+                            })
+                        .until(() -> !shooter.hasGamePiece()))
+                .andThen(pivot.moveArmToPosition(20, 3)));
 
     // Move to idle
     controllerDriver
@@ -177,11 +179,11 @@ public class RobotContainer {
   }
 
   private void configureTriggers() {
-    // Potential bug with this trigger? Might need to also check a feeding flag.
-    new Trigger(() -> intake.isIntaking() && shooter.isBackBeamTripped())
+    new Trigger(() -> intake.isIntaking() && shooter.isBackBeamTripped() && !shooter.isFeeding())
         .onTrue(
             Commands.parallel(
-                intake.intake().until(() -> !intake.isBeamTripped()), shooter.feedIn()));
+                    intake.intake().until(() -> !intake.isBeamTripped()), shooter.feedIn())
+                .andThen(pivot.moveArmToPosition(20, 3)));
   }
 
   /**
