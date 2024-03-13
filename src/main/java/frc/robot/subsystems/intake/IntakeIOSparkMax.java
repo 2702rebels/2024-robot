@@ -8,13 +8,15 @@ import com.revrobotics.CANSparkBase.IdleMode;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
-import frc.robot.Constants.IntakeConstants;
+import edu.wpi.first.wpilibj.DigitalInput;
+import frc.robot.CanID;
+import frc.robot.Constants;
 
 /** Add your docs here. */
 public class IntakeIOSparkMax implements IntakeIO {
-  private CANSparkMax motor =
-      new CANSparkMax(IntakeConstants.MotorControllerCANId, MotorType.kBrushless);
+  private CANSparkMax motor = new CANSparkMax(CanID.MOTOR_INTAKE, MotorType.kBrushless);
   private RelativeEncoder encoder = motor.getEncoder();
+  private DigitalInput beambreak = new DigitalInput(Constants.SHOOTER_BEAMBREAKFRONT);
 
   public IntakeIOSparkMax() {
     motor.restoreFactoryDefaults();
@@ -29,6 +31,7 @@ public class IntakeIOSparkMax implements IntakeIO {
     inputs.velocityRPM = encoder.getVelocity();
     inputs.appliedVolts = motor.getBusVoltage();
     inputs.currentAmps = motor.getOutputCurrent();
+    inputs.beamBreak = !beambreak.get();
   }
 
   @Override

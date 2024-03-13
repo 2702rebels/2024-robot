@@ -28,7 +28,8 @@ public class ShooterIOSparkMaxes implements ShooterIO {
   private SparkPIDController flywheelPID = flywheelLeader.getPIDController();
   private SparkPIDController feedPID = feederMotorController.getPIDController();
 
-  private DigitalInput beambreak = new DigitalInput(Constants.SHOOTER_BEAMBREAK);
+  private DigitalInput beambreakFront = new DigitalInput(Constants.SHOOTER_BEAMBREAKFRONT);
+  private DigitalInput beambreakBack = new DigitalInput(Constants.SHOOTER_BEAMBREAKBACK);
 
   public ShooterIOSparkMaxes() {
     // Configure and save settings to leader motor controller.
@@ -75,7 +76,8 @@ public class ShooterIOSparkMaxes implements ShooterIO {
         feederMotorController.getAppliedOutput() * feederMotorController.getBusVoltage();
     inputs.feedCurrentAmps = feederMotorController.getOutputCurrent();
 
-    inputs.feedBeamBreak = !beambreak.get();
+    inputs.beamBreakFront = !beambreakFront.get();
+    inputs.beamBreakBack = !beambreakBack.get();
   }
 
   @Override

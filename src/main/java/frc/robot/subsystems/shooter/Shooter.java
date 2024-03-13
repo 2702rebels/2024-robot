@@ -29,8 +29,6 @@ public class Shooter extends SubsystemBase {
 
   private final LoggedTunableNumber atSpeedAllowance =
       new LoggedTunableNumber("Shooter/AtSpeedAllowance", 50);
-  private final LoggedTunableNumber shooterRPM =
-      new LoggedTunableNumber("Shooter/ShooterRPM", 3000);
 
   private final SysIdRoutine sysId;
 
@@ -89,7 +87,15 @@ public class Shooter extends SubsystemBase {
   }
 
   public boolean hasGamePiece() {
-    return subsystemInputs.feedBeamBreak;
+    return subsystemInputs.beamBreakFront || subsystemInputs.beamBreakBack;
+  }
+
+  public boolean isFrontBeamTripped() {
+    return subsystemInputs.beamBreakFront;
+  }
+
+  public boolean isBackBeamTripped() {
+    return subsystemInputs.beamBreakBack;
   }
 
   /**
@@ -135,7 +141,7 @@ public class Shooter extends SubsystemBase {
             this)
         .until(
             () -> {
-              return subsystemInputs.feedBeamBreak;
+              return subsystemInputs.beamBreakFront;
             });
   }
 

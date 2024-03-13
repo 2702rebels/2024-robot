@@ -24,7 +24,8 @@ public interface ShooterIO {
     public double feedAppliedVolts = 0.0;
     public double feedCurrentAmps = 0.0;
 
-    public boolean feedBeamBreak = false;
+    public boolean beamBreakFront = false;
+    public boolean beamBreakBack = false;
   }
 
   /** Updates the set of loggable inputs. */

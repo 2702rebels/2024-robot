@@ -99,6 +99,7 @@ public class RobotContainer {
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     configureBindings();
+    configureTriggers();
     configureEndgameAlerts();
 
     // sysid routines
@@ -125,7 +126,7 @@ public class RobotContainer {
 
     controllerDriver.x().whileTrue(Commands.run(drive::stopWithX));
     controllerDriver
-        .b()
+        .start()
         .onTrue(
             Commands.runOnce(
                     () -> {
@@ -134,26 +135,25 @@ public class RobotContainer {
                     })
                 .ignoringDisable(true));
 
-    // orientation locks
+    // Orientation locks
     controllerDriver
         .leftBumper()
-        .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
-    controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
+        .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(270))));
+    controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(45)));
 
     // Intake
     controllerDriver
         .leftTrigger()
-        .whileTrue(
-            pivot.moveArmToPosition(90, 3).andThen(intake.intake().alongWith(shooter.feedIn())));
+        .whileTrue(pivot.moveArmToPosition(90, 5).andThen(intake.intake()));
+
+    // Outtake
     controllerDriver.y().whileTrue(intake.outake());
 
-    // Subwoofer Shoot
+    // Subwoofer shot
     controllerDriver
         .rightTrigger()
-        .whileTrue(
-            Commands.parallel(
-                pivot.moveArmToPosition(50),
-                shooter.shoot(3000, () -> pivot.isAtGoal())));
+        .onTrue(Commands.parallel(pivot.moveArmToPosition(50), shooter.spinUp(3000)))
+        .whileTrue(shooter.shoot(3000, () -> pivot.isAtGoal()));
 
     // Amp
     controllerDriver
@@ -161,16 +161,27 @@ public class RobotContainer {
         .onTrue(
             Commands.parallel(
                 pivot.moveArmToPosition(115),
-                shooter.shoot(
-                    900,
-                    () -> {
-                      return pivot.isAtGoal();
-                    })));
+                shooter
+                    .shoot(
+                        900,
+                        () -> {
+                          return pivot.isAtGoal();
+                        })
+                    .until(() -> !shooter.hasGamePiece())
+                    .andThen(pivot.moveArmToPosition(20, 3))));
 
     // Move to idle
     controllerDriver
         .povDown()
         .onTrue(Commands.parallel(pivot.moveArmToPosition(20), shooter.stop()));
+  }
+
+  private void configureTriggers() {
+    // Potential bug with this trigger? Might need to also check a feeding flag.
+    new Trigger(() -> intake.isIntaking() && shooter.isBackBeamTripped())
+        .onTrue(
+            Commands.parallel(
+                intake.intake().until(() -> !intake.isBeamTripped()), shooter.feedIn()));
   }
 
   /**
@@ -191,7 +202,8 @@ public class RobotContainer {
                       controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0);
                     }));
 
-    new Trigger(() -> shooter.hasGamePiece()).onTrue(controllerRumbleCommandFactory.apply(0.3));
+    new Trigger(() -> intake.isIntaking() && shooter.isBackBeamTripped())
+        .onTrue(controllerRumbleCommandFactory.apply(0.3));
 
     new Trigger(
             () ->

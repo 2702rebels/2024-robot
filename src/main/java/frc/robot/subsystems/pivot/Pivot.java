@@ -160,7 +160,7 @@ public class Pivot extends SubsystemBase {
         .ignoringDisable(true);
   }
 
-  /** Commands the arm to a position, ending the command when it arrives. Passing in an on goal allowance.*/
+  /** Commands the arm to a position, ending the command when it arrives (+ or - the allowance). */
   public Command moveArmToPosition(double angle, double allowance) {
     return new FunctionalCommand(
         () -> {
@@ -178,9 +178,8 @@ public class Pivot extends SubsystemBase {
         this);
   }
 
-    /** Commands the arm to a position, ending the command when it arrives. */
+  /** Commands the arm to a position, ending the command when it arrives. */
   public Command moveArmToPosition(double angle) {
     return moveArmToPosition(angle, onGoalAllowance.get());
   }
-
 }

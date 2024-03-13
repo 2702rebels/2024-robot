@@ -14,6 +14,8 @@ public class Intake extends SubsystemBase {
   IntakeIO subsystemIO;
   IntakeIOInputsAutoLogged subsystemInputs = new IntakeIOInputsAutoLogged();
 
+  private boolean intaking = false;
+
   LoggedTunableNumber intakeSpeed = new LoggedTunableNumber("Intake/IntakeSpeed", 0.7);
 
   /** Creates a new Intake. */
@@ -27,24 +29,48 @@ public class Intake extends SubsystemBase {
     Logger.processInputs("Intake/Motor", subsystemInputs);
   }
 
+  private void start() {
+    subsystemIO.setSpeed(intakeSpeed.get());
+    intaking = true;
+  }
+
+  private void stop() {
+    subsystemIO.setSpeed(0);
+    intaking = false;
+  }
+
+  private void reverse() {
+    subsystemIO.setSpeed(-intakeSpeed.get());
+  }
+
+  public boolean isIntaking() {
+    return intaking;
+  }
+
+  public boolean isBeamTripped() {
+    return subsystemInputs.beamBreak;
+  }
+
+  /** Runs the intake inwards while the command is scheduled. */
   public Command intake() {
     return new StartEndCommand(
         () -> {
-          subsystemIO.setSpeed(intakeSpeed.get());
+          start();
         },
         () -> {
-          subsystemIO.setSpeed(0);
+          stop();
         },
         this);
   }
 
+  /** Runs the intake outwards while the command is scheduled. */
   public Command outake() {
     return new StartEndCommand(
         () -> {
-          subsystemIO.setSpeed(-intakeSpeed.get());
+          reverse();
         },
         () -> {
-          subsystemIO.setSpeed(0);
+          stop();
         },
         this);
   }
