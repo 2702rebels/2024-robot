@@ -1,22 +1,29 @@
 package frc.robot.subsystems.vision;
 
+import edu.wpi.first.networktables.DoubleArraySubscriber;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.PubSubOption;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.vision.AprilTagDetectorIO.AprilTagDetectorIOInputs;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 
 public class AprilTagDetector extends SubsystemBase {
   private static final LoggedTunableNumber timeTolerance =
-      new LoggedTunableNumber("Vision/AprilTag/Time Tolerance", 50);
+      new LoggedTunableNumber("Vision/AprilTag/Time Tolerance", 150);
 
-  private final AprilTagDetectorIO io;
-  private final AprilTagDetectorIOInputs inputs = new AprilTagDetectorIOInputs();
+  private static final double[] EmptyDoubleArray = new double[] {};
+  private final DoubleArraySubscriber subscriber;
 
   private final AprilTag[] tags = new AprilTag[16]; // 16 april tags locations
   private final double cutoff = 1e15; // Vision sends -3e16
 
-  public AprilTagDetector(AprilTagDetectorIO io) {
-    this.io = io;
+  public AprilTagDetector() {
+    subscriber =
+        NetworkTableInstance.getDefault()
+            .getTable("Vision")
+            .getDoubleArrayTopic("PoseArray")
+            .subscribe(
+                EmptyDoubleArray, PubSubOption.keepDuplicates(false), PubSubOption.sendAll(true));
 
     // initialize tags
     for (var i = 0; i < tags.length; ++i) {
@@ -25,43 +32,43 @@ public class AprilTagDetector extends SubsystemBase {
   }
 
   public void periodic() {
-    this.io.updateInputs(inputs);
-    Logger.processInputs("Vision/AprilTag", inputs);
-
     // convert from milliseconds to seconds
     final var timeToleranceSeconds = timeTolerance.get() / 1e3;
 
-    for (var i = 0; i < inputs.frames.length; ++i) {
-      final var timestamp = inputs.timestamps[i];
+    final var queue = subscriber.readQueue();
+    if (queue.length > 0) {
+      for (var i = 0; i < queue.length; ++i) {
+        final var timestamp = queue[i].timestamp / 1E6;
+        final var frame = queue[i].value;
 
-      // array contains consecutive 3 tuples of the following format
-      // [x, y, z]
-      final var frame = inputs.frames[i];
-      for (var j = 0; j < tags.length; ++j) {
-        final var offset = j * 3;
-        // incomplete frame (should not happen)
-        if (offset + 2 >= frame.length) {
-          break;
-        }
-
-        final var x = frame[offset];
-        if (Math.abs(x) > cutoff) {
-          // if the tag disappears keep the last known position for
-          // the 'tolerance' window to avoid jitterring when the tag
-          // come in and out of view
-          if (timestamp - tags[j].timestamp < timeToleranceSeconds) {
-            continue;
+        // array contains consecutive 3 tuples of the following format
+        // [x, y, z]
+        for (var j = 0; j < tags.length; ++j) {
+          final var offset = j * 3;
+          // incomplete frame (should not happen)
+          if (offset + 2 >= frame.length) {
+            break;
           }
 
-          // keep the last known vector but set tracked to false
-          tags[j].tracked = false;
-          tags[j].timestamp = timestamp;
-        } else {
-          tags[j].tracked = true;
-          tags[j].x = x;
-          tags[j].y = frame[offset + 1];
-          tags[j].z = frame[offset + 2];
-          tags[j].timestamp = timestamp;
+          final var x = frame[offset];
+          if (Math.abs(x) > cutoff) {
+            // if the tag disappears keep the last known position for
+            // the 'tolerance' window to avoid jitterring when the tag
+            // come in and out of view
+            if (timestamp - tags[j].timestamp < timeToleranceSeconds) {
+              continue;
+            }
+
+            // keep the last known vector but set tracked to false
+            tags[j].tracked = false;
+            tags[j].timestamp = timestamp;
+          } else {
+            tags[j].tracked = true;
+            tags[j].x = x;
+            tags[j].y = frame[offset + 1];
+            tags[j].z = frame[offset + 2];
+            tags[j].timestamp = timestamp;
+          }
         }
       }
     }

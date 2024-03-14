@@ -25,9 +25,7 @@ import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOSparkMax;
 import frc.robot.subsystems.vision.AprilTagDetector;
-import frc.robot.subsystems.vision.AprilTagDetectorIOCamera;
 import frc.robot.subsystems.vision.NoteDetector;
-import frc.robot.subsystems.vision.NoteDetectorIOCamera;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TrajectoryLoader;
 import java.util.Map;
@@ -37,9 +35,8 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 public class RobotContainer {
   // subsystems
   private final Drive drive;
-  private final NoteDetector noteDetector = new NoteDetector(new NoteDetectorIOCamera());
-  private final AprilTagDetector aprilTagDetector =
-      new AprilTagDetector(new AprilTagDetectorIOCamera());
+  private final NoteDetector noteDetector = new NoteDetector();
+  private final AprilTagDetector aprilTagDetector = new AprilTagDetector();
   // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
 
   // loaded chore trajectories
