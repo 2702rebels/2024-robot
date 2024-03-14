@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.XboxController;
@@ -17,6 +18,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
+import frc.robot.commands.ScoreInSpeaker;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -54,7 +56,7 @@ public class RobotContainer {
   private final Shooter shooter;
   // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
 
-  // loaded chore trajectories
+  // loaded choreo trajectories
   private final Map<String, ChoreoTrajectory> trajectories;
 
   // driver controller
@@ -161,8 +163,18 @@ public class RobotContainer {
     // Orientation locks (Red Alliance)
     controllerDriver
         .leftBumper()
-        .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(90))));
-    controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(-45)));
+        .onTrue(
+            Commands.either(
+                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(90))),
+                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(-90))),
+                () -> DriverStation.getAlliance().get() == Alliance.Red));
+    controllerDriver
+        .rightBumper()
+        .onTrue(
+            Commands.either(
+                Commands.runOnce(() -> drive.toggleOrientationLock(-45)),
+                Commands.runOnce(() -> drive.toggleOrientationLock(45)),
+                () -> DriverStation.getAlliance().get() == Alliance.Red));
 
     // Intake
     controllerDriver
@@ -172,20 +184,24 @@ public class RobotContainer {
     // Outtake
     controllerDriver.y().whileTrue(intake.outake());
 
-    // Subwoofer shot
+    // Speaker shot
     controllerDriver
         .rightTrigger()
+        .whileTrue(new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector));
+
+    // Subwoofer shot
+    controllerDriver
+        .b()
         .whileTrue(
-            Commands.parallel(
-                pivot.moveArmToPosition(50), shooter.shoot(3000, () -> pivot.isAtGoal())))
-        .onFalse(pivot.moveArmToPosition(20, 3));
+            pivot.moveArmToPosition(50).alongWith(shooter.shoot(3000, () -> pivot.isAtGoal())))
+        .onFalse(pivot.moveArmToPosition(20, 2));
 
     // Amp
     controllerDriver
         .a()
         .onTrue(
             Commands.parallel(
-                    pivot.moveArmToPosition(107, 3),
+                    pivot.moveArmToPosition(107, 5),
                     shooter
                         .shoot(
                             900,
@@ -198,14 +214,16 @@ public class RobotContainer {
     // Move to idle
     controllerDriver
         .povDown()
-        .onTrue(Commands.parallel(pivot.moveArmToPosition(20), shooter.stop()));
+        .onTrue(
+            Commands.parallel(
+                pivot.moveArmToPosition(20), Commands.runOnce(() -> shooter.stop(), shooter)));
   }
 
   private void configureTriggers() {
     new Trigger(() -> intake.isIntaking() && shooter.isBackBeamTripped() && !shooter.isFeeding())
         .onTrue(
             Commands.parallel(
-                    intake.intake().until(() -> !intake.isBeamTripped()), shooter.feedIn())
+                    intake.intake().until(() -> shooter.isFrontBeamTripped()), shooter.feedIn())
                 .andThen(pivot.moveArmToPosition(20, 3)));
   }
 
@@ -227,7 +245,7 @@ public class RobotContainer {
                       controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0);
                     }));
 
-    new Trigger(() -> intake.isIntaking() && shooter.isBackBeamTripped())
+    new Trigger(() -> intake.isIntaking() && shooter.isFrontBeamTripped())
         .onTrue(controllerRumbleCommandFactory.apply(0.3));
 
     new Trigger(

@@ -111,7 +111,11 @@ public class Pivot extends SubsystemBase {
   }
 
   /** Sets the requested angle for the pivot's control loop. */
-  private void setRequestedAngle(double angle) {
+  public void setRequestedAngle(double angle) {
+    if (!enabled) {
+      enabled = true;
+      System.out.println("Enabling pivot control loop flag.");
+    }
     requestedPosInDeg = MathUtil.clamp(angle, minPivotAngle.get(), maxPivotAngle.get());
   }
 
@@ -164,10 +168,6 @@ public class Pivot extends SubsystemBase {
   public Command moveArmToPosition(double angle, double allowance) {
     return new FunctionalCommand(
         () -> {
-          if (!enabled) {
-            enabled = true;
-            System.out.println("Enabling pivot control loop flag.");
-          }
           setRequestedAngle(angle);
         },
         () -> {},

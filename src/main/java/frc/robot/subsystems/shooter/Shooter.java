@@ -6,7 +6,6 @@ package frc.robot.subsystems.shooter;
 
 import edu.wpi.first.units.Units;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.StartEndCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -115,7 +114,7 @@ public class Shooter extends SubsystemBase {
         },
         () -> {
           if (isAtSpeed(rpm) && okToShoot.getAsBoolean()) {
-            subsystemIO.setFeedPercentOutput(0.3);
+            subsystemIO.setFeedPercentOutput(0.7);
           }
         },
         (interupted) -> {
@@ -128,18 +127,18 @@ public class Shooter extends SubsystemBase {
         this);
   }
 
-  public Command spinUp(double speed) {
-    return Commands.runOnce(() -> subsystemIO.setFlywheelSpeed(speed), this);
+  public void spinUp(double speed) {
+    subsystemIO.setFlywheelSpeed(speed);
   }
 
-  public Command feedOut() {
-    return Commands.runOnce(() -> subsystemIO.setFeedPercentOutput(0.7), this);
+  public void feedOut() {
+    subsystemIO.setFeedPercentOutput(0.7);
   }
 
   public Command feedIn() {
     return new StartEndCommand(
             () -> {
-              subsystemIO.setFeedPercentOutput(0.4);
+              subsystemIO.setFeedPercentOutput(0.3);
               feeding = true;
             },
             () -> {
@@ -154,12 +153,8 @@ public class Shooter extends SubsystemBase {
   }
 
   /** Stops shooter and feed. */
-  public Command stop() {
-    return Commands.runOnce(
-        () -> {
-          subsystemIO.stopFeed();
-          subsystemIO.stopFlywheel();
-        },
-        this);
+  public void stop() {
+    subsystemIO.stopFeed();
+    subsystemIO.stopFlywheel();
   }
 }
