@@ -15,8 +15,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.DriveCommands;
-import frc.robot.commands.DriveToNote;
-import frc.robot.commands.DriveTrajectory;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -89,13 +87,14 @@ public class RobotContainer {
     configureEndgameAlerts();
 
     // testing
-    controllerDriver.a().onTrue(new DriveTrajectory(trajectories.get("Test"), true, true, drive));
-    controllerDriver
-        .rightTrigger()
-        .whileTrue(
-            new DriveToNote(drive, noteDetector, false)
-                .until(() -> !noteDetector.hasTrackedNote())
-                .withName("DriveToNote"));
+    // controllerDriver.a().onTrue(new DriveTrajectory(trajectories.get("Test"), true, true,
+    // drive));
+    // controllerDriver
+    //     .rightTrigger()
+    //     .whileTrue(
+    //         new DriveToNote(drive, noteDetector, false)
+    //             .until(() -> !noteDetector.hasTrackedNote())
+    //             .withName("DriveToNote"));
   }
 
   /**
