@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
+import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
 
 public class Shooter extends SubsystemBase {
@@ -115,6 +116,26 @@ public class Shooter extends SubsystemBase {
         },
         () -> {
           if (isAtSpeed(rpm) && okToShoot.getAsBoolean()) {
+            subsystemIO.setFeedPercentOutput(0.3);
+          }
+        },
+        (interupted) -> {
+          subsystemIO.stopFlywheel();
+          subsystemIO.stopFeed();
+        },
+        () -> {
+          return false;
+        },
+        this);
+  }
+
+  public Command shoot(DoubleSupplier rpm, BooleanSupplier okToShoot) {
+    return new FunctionalCommand(
+        () -> {
+          subsystemIO.setFlywheelSpeed(rpm.getAsDouble());
+        },
+        () -> {
+          if (isAtSpeed(rpm.getAsDouble()) && okToShoot.getAsBoolean()) {
             subsystemIO.setFeedPercentOutput(0.3);
           }
         },

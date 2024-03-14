@@ -59,6 +59,9 @@ public class RobotContainer {
   private static final LoggedTunableNumber endgameAlert2 =
       new LoggedTunableNumber("Endgame/Alert 2", 10.0);
 
+  private static final LoggedTunableNumber trapAngle = new LoggedTunableNumber("Trap/Angle", 70);
+  private static final LoggedTunableNumber trapSpeed = new LoggedTunableNumber("Trap/Speed", 1475);
+
   public RobotContainer() {
 
     switch (Constants.currentMode) {
@@ -134,6 +137,15 @@ public class RobotContainer {
                       drive.reset();
                     })
                 .ignoringDisable(true));
+
+    // Trap Shot
+    controllerDriver
+        .b()
+        .onTrue(
+            pivot
+                .moveArmToPosition(() -> trapAngle.get())
+                .alongWith(shooter.shoot(() -> trapSpeed.get(), () -> pivot.isAtGoal()))
+                .until(() -> !shooter.hasGamePiece()));
 
     // Orientation locks (Red Alliance)
     controllerDriver

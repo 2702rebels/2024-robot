@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.LoggedTunableNumber;
+import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
 
 public class Pivot extends SubsystemBase {
@@ -180,6 +181,27 @@ public class Pivot extends SubsystemBase {
 
   /** Commands the arm to a position, ending the command when it arrives. */
   public Command moveArmToPosition(double angle) {
+    return moveArmToPosition(angle, onGoalAllowance.get());
+  }
+
+  public Command moveArmToPosition(DoubleSupplier angle, double allowance) {
+    return new FunctionalCommand(
+        () -> {
+          if (!enabled) {
+            enabled = true;
+            System.out.println("Enabling pivot control loop flag.");
+          }
+          setRequestedAngle(angle.getAsDouble());
+        },
+        () -> {},
+        (interupted) -> {},
+        () -> {
+          return isAtGoal(allowance);
+        },
+        this);
+  }
+
+  public Command moveArmToPosition(DoubleSupplier angle) {
     return moveArmToPosition(angle, onGoalAllowance.get());
   }
 }
