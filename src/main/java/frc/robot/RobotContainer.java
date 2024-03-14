@@ -1,5 +1,6 @@
 package frc.robot;
 
+import com.choreo.lib.ChoreoTrajectory;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -35,17 +36,26 @@ import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.shooter.ShooterIO;
 import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.shooter.ShooterIOSparkMaxes;
+import frc.robot.subsystems.vision.AprilTagDetector;
+import frc.robot.subsystems.vision.NoteDetector;
 import frc.robot.util.LoggedTunableNumber;
+import frc.robot.util.TrajectoryLoader;
+import java.util.Map;
 import java.util.function.Function;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
   // subsystems
   private final Drive drive;
+  private final NoteDetector noteDetector = new NoteDetector();
+  private final AprilTagDetector aprilTagDetector = new AprilTagDetector();
   private final Intake intake;
   private final Pivot pivot;
   private final Shooter shooter;
   // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
+
+  // loaded chore trajectories
+  private final Map<String, ChoreoTrajectory> trajectories;
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -95,12 +105,25 @@ public class RobotContainer {
         break;
     }
 
+    // load trajectories from the file system
+    trajectories = TrajectoryLoader.loadChoreoTrajectories();
+
     // set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     configureBindings();
     configureTriggers();
     configureEndgameAlerts();
+
+    // testing
+    // controllerDriver.a().onTrue(new DriveTrajectory(trajectories.get("Test"), true, true,
+    // drive));
+    // controllerDriver
+    //     .rightTrigger()
+    //     .whileTrue(
+    //         new DriveToNote(drive, noteDetector, false)
+    //             .until(() -> !noteDetector.hasTrackedNote())
+    //             .withName("DriveToNote"));
 
     // sysid routines
     autoChooser.addOption(
