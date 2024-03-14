@@ -49,10 +49,18 @@ public class NoteDetector extends SubsystemBase {
       DetectedNote bestNote = null;
 
       // array contains consecutive 6 tuples of the following format
-      // [id, probability, xmin, ymin, xmax, ymax]
+      // [type, probability, xmin, ymin, xmax, ymax]
+      // type = 0 -- note
+      // type = 1 -- robot
       var offset = 0;
       final var frame = inputs.frames[i];
       while (offset + 6 <= frame.length) {
+        final var type = frame[offset];
+        if (type != 0) {
+          offset += 6;
+          continue;
+        }
+
         final var p = frame[offset + 1];
 
         // ignore observations with low detection probabilities

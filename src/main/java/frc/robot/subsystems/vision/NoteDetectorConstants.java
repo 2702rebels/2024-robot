@@ -31,13 +31,13 @@ public final class NoteDetectorConstants {
       (FocalLengthMm / SensorPixelMm) / (SensorWidthPx / FrameWidthPx);
 
   /** Camera height above ground in meters */
-  public static final double CameraHeightMeters = Units.inchesToMeters(10);
+  public static final double CameraHeightMeters = Units.inchesToMeters(24);
 
   public static final double CameraHeightMetersSq = CameraHeightMeters * CameraHeightMeters;
 
   /** Camera translation from the COR in meters. X is front/rear, Y is left/right. */
   public static final Translation2d CameraTranslationMeters =
-      new Translation2d(Units.inchesToMeters(10.5), 0.0);
+      new Translation2d(Units.inchesToMeters(5.5), 0.0);
 
   /** Note (game piece) width in meters */
   public static final double NoteWidthMeters = Units.inchesToMeters(14);
