@@ -19,6 +19,8 @@ public class Robot extends LoggedRobot {
   private Command autonomousCommand;
   private RobotContainer robotContainer;
 
+  private static final String logPath = "/home/lvuser/logs"; // "/U/logs"
+
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -48,7 +50,7 @@ public class Robot extends LoggedRobot {
     switch (Constants.currentMode) {
       case REAL:
         // running on a real robot, log to a USB stick ("/U/logs")
-        // Logger.addDataReceiver(new WPILOGWriter()));
+        // Logger.addDataReceiver(new WPILOGWriter(logPath));
         Logger.addDataReceiver(new NT4Publisher());
         break;
 
@@ -60,7 +62,7 @@ public class Robot extends LoggedRobot {
       case REPLAY:
         // replaying a log, set up replay source
         setUseTiming(false); // run as fast as possible
-        String logPath = LogFileUtil.findReplayLog();
+        final var logPath = LogFileUtil.findReplayLog();
         Logger.setReplaySource(new WPILOGReader(logPath));
         Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim")));
         break;
