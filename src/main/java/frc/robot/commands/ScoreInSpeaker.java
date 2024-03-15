@@ -9,6 +9,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.led.LedSubsystem;
 import frc.robot.subsystems.pivot.Pivot;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.vision.AprilTag;
@@ -21,16 +22,24 @@ public class ScoreInSpeaker extends Command {
   private Pivot pivot;
   private AprilTagDetector aprilTagDetector;
   private AprilTag tag;
+  private LedSubsystem leds;
+
+  private boolean isStillTracking = false;
 
   /** Creates a new ScoreInSpeaker. */
   public ScoreInSpeaker(
-      Drive drive, Shooter shooter, Pivot pivot, AprilTagDetector aprilTagDetector) {
+      Drive drive,
+      Shooter shooter,
+      Pivot pivot,
+      AprilTagDetector aprilTagDetector,
+      LedSubsystem leds) {
     this.drive = drive;
     this.shooter = shooter;
     this.pivot = pivot;
     this.aprilTagDetector = aprilTagDetector;
+    this.leds = leds;
 
-    addRequirements(shooter, pivot);
+    addRequirements(shooter, pivot, leds);
   }
 
   // Called when the command is initially scheduled.
@@ -45,6 +54,8 @@ public class ScoreInSpeaker extends Command {
 
     shooter.spinUp(4000);
     pivot.setRequestedAngle(30);
+    leds.setTracking(false);
+    isStillTracking = false;
   }
 
   // Called every time the scheduler runs while the command is scheduled.
@@ -60,6 +71,10 @@ public class ScoreInSpeaker extends Command {
     Logger.recordOutput("TrackedShooter/Speed", speed);
 
     if (tag.tracked) {
+      if (!isStillTracking) {
+        isStillTracking = true;
+        leds.setTracking(true);
+      }
       drive.enableOrientationLock(drive.getRotation().getRadians() - turnAngle);
 
       // Hack to update drive train directly if running in auto. Instead of the hack to piggyback
@@ -78,6 +93,11 @@ public class ScoreInSpeaker extends Command {
           && shooter.isAtSpeed(speed)
           && Math.abs((turnAngle * 180 / Math.PI)) < 3) {
         shooter.feedOut();
+      }
+    } else {
+      if (isStillTracking) {
+        isStillTracking = false;
+        leds.setTracking(false);
       }
     }
   }

@@ -212,7 +212,7 @@ public class RobotContainer {
     // Speaker shot
     controllerDriver
         .rightTrigger()
-        .whileTrue(new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector));
+        .whileTrue(new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led));
 
     // Subwoofer shot
     controllerDriver

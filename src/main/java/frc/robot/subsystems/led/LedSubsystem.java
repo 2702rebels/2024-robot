@@ -209,4 +209,12 @@ public class LedSubsystem extends SubsystemBase {
             })
         .ignoringDisable(true);
   }
+
+  public void setTracking(boolean isTracking) {
+    if (isTracking) {
+      flash(Color.kGreen, 0.25);
+    } else {
+      flash(Color.kRed, 0.25);
+    }
+  }
 }
