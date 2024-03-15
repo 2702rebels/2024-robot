@@ -242,6 +242,8 @@ public class RobotContainer {
         .onTrue(
             Commands.parallel(
                 pivot.moveArmToPosition(20), Commands.runOnce(() -> shooter.stop(), shooter)));
+
+    led.setDefaultCommand(led.breathCommand(""));
   }
 
   /**
@@ -292,5 +294,6 @@ public class RobotContainer {
 
   public void onDisable() {
     CommandScheduler.getInstance().schedule(pivot.disableControlLoop());
+    CommandScheduler.getInstance().schedule(led.randomCommand());
   }
 }
