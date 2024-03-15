@@ -4,6 +4,7 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.util.Color;
 import frc.robot.util.Misc.ColorHSV;
+import java.util.Random;
 
 /**
  * LED pattern implementations.
@@ -51,7 +52,7 @@ public final class LedPatterns {
 
     // number of LEDs in each chunk to enable
     final var visibleLength =
-        MathUtil.clamp(chunkLength - (int) Math.round(chunkLength / t), 0, chunkLength);
+        MathUtil.clamp(chunkLength - (int) Math.round(chunkLength * t), 0, chunkLength);
 
     for (var i = 0; i < chunks; ++i) {
       for (var j = 0; j < chunkLength; ++j) {
@@ -73,7 +74,7 @@ public final class LedPatterns {
     final var chunkLength = buffer.getLength() / chunks;
 
     // number of LEDs in each chunk to enable
-    final var visibleLength = MathUtil.clamp((int) Math.round(chunkLength / t), 0, chunkLength);
+    final var visibleLength = MathUtil.clamp((int) Math.round(chunkLength * t), 0, chunkLength);
 
     for (var i = 0; i < chunks; ++i) {
       for (var j = 0; j < chunkLength; ++j) {
@@ -116,6 +117,21 @@ public final class LedPatterns {
     for (var i = 0; i < buffer.getLength(); ++i) {
       buffer.setRGB(
           i, (int) Math.round(r * 255), (int) Math.round(g * 255), (int) Math.round(b * 255));
+    }
+  }
+
+  private static final Random rnd = new Random();
+
+  public static void random(AddressableLEDBuffer buffer, double t, ColorHSV color) {
+    for (var i = 0; i < buffer.getLength(); ++i) {
+      var v = rnd.nextInt(256);
+      if (v > 127) {
+        v = 255;
+      } else {
+        v = 0;
+      }
+
+      buffer.setHSV(i, color.hue(), color.saturation(), v);
     }
   }
 }
