@@ -30,5 +30,5 @@ public final class Constants {
   public static final int CLIMB_SERVO = 2;
 
   /** Digital IO port the climb limit switch is plugged into. */
-  public static final int CLIMB_LIMITSWITCH = 7;
+  public static final int CLIMB_LIMITSWITCH = 5;
 }
