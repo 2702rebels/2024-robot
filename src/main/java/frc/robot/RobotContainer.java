@@ -234,7 +234,8 @@ public class RobotContainer {
                               return pivot.isAtGoal();
                             })
                         .until(() -> !shooter.hasGamePiece()))
-                .andThen(pivot.moveArmToPosition(20, 3)));
+                .andThen(pivot.moveArmToPosition(20, 3))
+                .deadlineWith(led.breathCommand("Amp")));
 
     // Move to idle
     controllerDriver
