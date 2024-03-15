@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems.climb;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.StartEndCommand;
@@ -22,7 +23,7 @@ public class Climb extends SubsystemBase {
   private final LoggedTunableNumber hookTopPosition =
       new LoggedTunableNumber("Climb/hookTopPosition", 55);
   private final LoggedTunableNumber homeSpeed = new LoggedTunableNumber("Climb/homeSpeed", -0.2);
-  private final LoggedTunableNumber kp = new LoggedTunableNumber("Climb/PID/P", 0.00001);
+  private final LoggedTunableNumber kp = new LoggedTunableNumber("Climb/PID/P", 0.01);
   private final LoggedTunableNumber ki = new LoggedTunableNumber("Climb/PID/I", 0.0);
   private final LoggedTunableNumber kd = new LoggedTunableNumber("Climb/PID/D", 0.0);
 
@@ -35,6 +36,12 @@ public class Climb extends SubsystemBase {
 
     // Engage ratchet
     subsystemio.setServoPosition(ratchetOnAngle.get());
+
+    // Put climb commands on dashboard.
+
+    SmartDashboard.putData("Climb/Home", homeHooks(true));
+    SmartDashboard.putData("Climb/ServoDisengaged", setServoDisengaged());
+    SmartDashboard.putData("Climb/ServoEngaged", setServoEngaged());
   }
 
   @Override
@@ -114,19 +121,19 @@ public class Climb extends SubsystemBase {
         this);
   }
 
-  public Command setServoOn() {
+  public Command setServoEngaged() {
     return Commands.runOnce(
         () -> {
-          System.out.println("Servo: On");
+          System.out.println("Servo: Engaged");
           subsystemio.setServoPosition(ratchetOnAngle.get());
         },
         this);
   }
 
-  public Command setServoOff() {
+  public Command setServoDisengaged() {
     return Commands.runOnce(
         () -> {
-          System.out.println("Servo: Off");
+          System.out.println("Servo: Disengaged");
           subsystemio.setServoPosition(ratchetOffAngle.get());
         },
         this);

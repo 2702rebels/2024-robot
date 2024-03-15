@@ -114,16 +114,12 @@ public class RobotContainer {
 
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
 
-    controllerDriver.b().whileTrue(climb.retractHooks());
-    controllerDriver.rightTrigger().whileTrue(climb.homeHooks(true));
-
     controllerDriver
-        .y()
-        .whileTrue(
-            climb.homeHooks(false).andThen(Commands.waitSeconds(1)).andThen(climb.raiseHooks()));
+        .povUp()
+        .onTrue(
+            climb.homeHooks(false).andThen(Commands.waitSeconds(0.2)).andThen(climb.raiseHooks()));
 
-    controllerDriver.povRight().onTrue(climb.setServoOn());
-    controllerDriver.povLeft().onTrue(climb.setServoOff());
+    controllerDriver.back().onTrue(climb.retractHooks());
   }
 
   /**
