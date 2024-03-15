@@ -7,14 +7,19 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
+import frc.robot.commands.ScoreInSpeaker;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -22,6 +27,20 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOSparkMax;
+import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.IntakeIO;
+import frc.robot.subsystems.intake.IntakeIOSim;
+import frc.robot.subsystems.intake.IntakeIOSparkMax;
+import frc.robot.subsystems.led.LedConstants;
+import frc.robot.subsystems.led.LedSubsystem;
+import frc.robot.subsystems.pivot.Pivot;
+import frc.robot.subsystems.pivot.PivotIO;
+import frc.robot.subsystems.pivot.PivotIOSim;
+import frc.robot.subsystems.pivot.PivotIOSparkMax;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.subsystems.shooter.ShooterIOSparkMaxes;
 import frc.robot.subsystems.vision.AprilTagDetector;
 import frc.robot.subsystems.vision.NoteDetector;
 import frc.robot.util.LoggedTunableNumber;
@@ -35,9 +54,12 @@ public class RobotContainer {
   private final Drive drive;
   private final NoteDetector noteDetector = new NoteDetector();
   private final AprilTagDetector aprilTagDetector = new AprilTagDetector();
-  // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
+  private final Intake intake;
+  private final Pivot pivot;
+  private final Shooter shooter;
+  private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
 
-  // loaded chore trajectories
+  // loaded choreo trajectories
   private final Map<String, ChoreoTrajectory> trajectories;
 
   // driver controller
@@ -53,6 +75,7 @@ public class RobotContainer {
       new LoggedTunableNumber("Endgame/Alert 2", 10.0);
 
   public RobotContainer() {
+
     switch (Constants.currentMode) {
       case REAL:
         // real robot, instantiate hardware IO implementations
@@ -64,16 +87,26 @@ public class RobotContainer {
                         DriveConstants.moduleConfigs[index],
                         DriveConstants.moduleAngularOffsets[index],
                         DriveConstants.drivetrainConfig));
+
+        intake = new Intake(new IntakeIOSparkMax());
+        pivot = new Pivot(new PivotIOSparkMax(CanID.MOTOR_PIVOT));
+        shooter = new Shooter(new ShooterIOSparkMaxes());
         break;
 
       case SIM:
         // sim robot, instantiate physics sim IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
+        intake = new Intake(new IntakeIOSim());
+        pivot = new Pivot(new PivotIOSim());
+        shooter = new Shooter(new ShooterIOSim());
         break;
 
       default:
         // replayed robot, disable IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
+        intake = new Intake(new IntakeIO() {});
+        pivot = new Pivot(new PivotIO() {});
+        shooter = new Shooter(new ShooterIO() {});
         break;
     }
 
@@ -84,7 +117,10 @@ public class RobotContainer {
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     configureBindings();
+    configureTriggers();
     configureEndgameAlerts();
+
+    led.breath(new Color(255, 0, 0), 5);
 
     // testing
     // controllerDriver.a().onTrue(new DriveTrajectory(trajectories.get("Test"), true, true,
@@ -95,6 +131,13 @@ public class RobotContainer {
     //         new DriveToNote(drive, noteDetector, false)
     //             .until(() -> !noteDetector.hasTrackedNote())
     //             .withName("DriveToNote"));
+
+    // sysid routines
+    autoChooser.addOption(
+        "Shooter SysId (Quasistatic Forward)",
+        shooter.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    autoChooser.addOption(
+        "Shooter SysId (Dynamic Forward)", shooter.sysIdDynamic(SysIdRoutine.Direction.kForward));
   }
 
   /**
@@ -113,7 +156,7 @@ public class RobotContainer {
 
     controllerDriver.x().whileTrue(Commands.run(drive::stopWithX));
     controllerDriver
-        .b()
+        .start()
         .onTrue(
             Commands.runOnce(
                     () -> {
@@ -122,12 +165,71 @@ public class RobotContainer {
                     })
                 .ignoringDisable(true));
 
-    // orientation locks
+    // Orientation locks (Red Alliance)
     controllerDriver
         .leftBumper()
-        .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
+        .onTrue(
+            Commands.either(
+                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(90))),
+                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(-90))),
+                () -> DriverStation.getAlliance().get() == Alliance.Red));
+    controllerDriver
+        .rightBumper()
+        .onTrue(
+            Commands.either(
+                Commands.runOnce(() -> drive.toggleOrientationLock(-45)),
+                Commands.runOnce(() -> drive.toggleOrientationLock(45)),
+                () -> DriverStation.getAlliance().get() == Alliance.Red));
 
-    controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
+    // Intake
+    controllerDriver
+        .leftTrigger()
+        .whileTrue(pivot.moveArmToPosition(90, 5).andThen(intake.intake()));
+
+    // Outtake
+    controllerDriver.y().whileTrue(intake.outake());
+
+    // Speaker shot
+    controllerDriver
+        .rightTrigger()
+        .whileTrue(new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector));
+
+    // Subwoofer shot
+    controllerDriver
+        .b()
+        .whileTrue(
+            pivot.moveArmToPosition(50).alongWith(shooter.shoot(3000, () -> pivot.isAtGoal())))
+        .onFalse(pivot.moveArmToPosition(20, 2));
+
+    // Amp
+    controllerDriver
+        .a()
+        .onTrue(
+            Commands.parallel(
+                    pivot.moveArmToPosition(107, 5),
+                    shooter
+                        .shoot(
+                            900,
+                            () -> {
+                              return pivot.isAtGoal();
+                            })
+                        .until(() -> !shooter.hasGamePiece()))
+                .andThen(pivot.moveArmToPosition(20, 3)));
+
+    // Move to idle
+    controllerDriver
+        .povDown()
+        .onTrue(
+            Commands.parallel(
+                pivot.moveArmToPosition(20), Commands.runOnce(() -> shooter.stop(), shooter)));
+  }
+
+  private void configureTriggers() {
+    new Trigger(() -> intake.isIntaking() && shooter.isBackBeamTripped() && !shooter.isFeeding())
+        .onTrue(
+            Commands.parallel(
+                    intake.intake().until(() -> shooter.isFrontBeamTripped()), shooter.feedIn())
+                .andThen(pivot.moveArmToPosition(20, 3)));
   }
 
   /**
@@ -147,6 +249,9 @@ public class RobotContainer {
                     () -> {
                       controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0);
                     }));
+
+    new Trigger(() -> intake.isIntaking() && shooter.isFrontBeamTripped())
+        .onTrue(controllerRumbleCommandFactory.apply(0.3));
 
     new Trigger(
             () ->
@@ -171,5 +276,9 @@ public class RobotContainer {
 
   public Command getAutonomousCommand() {
     return autoChooser.get();
+  }
+
+  public void onDisable() {
+    CommandScheduler.getInstance().schedule(pivot.disableControlLoop());
   }
 }

@@ -55,9 +55,9 @@ public class AprilTagDetector extends SubsystemBase {
             // if the tag disappears keep the last known position for
             // the 'tolerance' window to avoid jitterring when the tag
             // come in and out of view
-            if (timestamp - tags[j].timestamp < timeToleranceSeconds) {
-              continue;
-            }
+            // if (timestamp - tags[j].timestamp < timeToleranceSeconds) {
+            //   continue;
+            // }
 
             // keep the last known vector but set tracked to false
             tags[j].tracked = false;
@@ -80,5 +80,9 @@ public class AprilTagDetector extends SubsystemBase {
       Logger.recordOutput(key + "/Y", tags[i].y);
       Logger.recordOutput(key + "/Z", tags[i].z);
     }
+  }
+
+  public AprilTag getTag(int id) {
+    return tags[id - 1];
   }
 }
