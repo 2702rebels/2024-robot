@@ -5,6 +5,8 @@ import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.util.Color;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.Misc.ColorHSV;
 import java.util.function.BiConsumer;
@@ -18,6 +20,8 @@ public class LedSubsystem extends SubsystemBase {
 
   private double period = 0;
   private double periodStart;
+  private double periodLast;
+  private int periodDiscretization;
 
   /** Pattern that does nothing */
   private static void nop(AddressableLEDBuffer buffer, double t) {}
@@ -57,6 +61,10 @@ public class LedSubsystem extends SubsystemBase {
     this.periodStart = Timer.getFPGATimestamp();
   }
 
+  public void setPeriodDiscretization(int samples) {
+    this.periodDiscretization = samples;
+  }
+
   /**
    * Sets the pattern to the specified functional implementation and period.
    *
@@ -74,10 +82,16 @@ public class LedSubsystem extends SubsystemBase {
     final var t =
         MathUtil.clamp(period > 0 ? ((timestamp - periodStart) % period) / period : 0, 0, 1);
 
+    if (periodDiscretization > 0 && timestamp - periodLast < period / periodDiscretization) {
+      return;
+    }
+
     // populate the buffer using pattern implementation
     // and write the buffer to the physical LED strip
     pattern.accept(buffer, Double.valueOf(t));
     strip.setData(buffer);
+
+    periodLast = timestamp;
   }
 
   /** Sets the solid color pattern. */
@@ -111,11 +125,88 @@ public class LedSubsystem extends SubsystemBase {
   /** Sets the breath color pattern. */
   public void breath(Color color, double period) {
     setColor(color);
-    setPattern((buffer, t) -> LedPatterns.breath(buffer, t, this.color, 0.25, 1), period);
+    setPattern((buffer, t) -> LedPatterns.breath(buffer, t, this.color, 0.1, 1), period);
   }
 
   /** Sets the breath color pattern using HSV color scheme. */
   public void breath(ColorHSV color, double period) {
-    setPattern((buffer, t) -> LedPatterns.breath(buffer, t, color, 0.25, 1), period);
+    setPattern((buffer, t) -> LedPatterns.breath(buffer, t, color, 0.1, 1), period);
+  }
+
+  /** Sets the random color pattern using HSV color scheme. */
+  public void random(ColorHSV color, double period) {
+    setPattern((buffer, t) -> LedPatterns.random(buffer, t, color), period);
+  }
+
+  public Command breathCommand(String state) {
+    if (state.equals("amp")) {
+      return Commands.runOnce(
+              () -> {
+                System.out.println("Running amp breath command");
+                setPeriodDiscretization(0);
+                breath(new Color(255, 255, 255), 3);
+              },
+              this)
+          .ignoringDisable(true);
+    } else if (state.equals("speaker")) {
+      return Commands.runOnce(
+              () -> {
+                System.out.println("Running speaker breath command");
+                setPeriodDiscretization(0);
+                breath(new Color(255, 0, 255), 3);
+              },
+              this)
+          .ignoringDisable(true);
+    } else {
+      return Commands.runOnce(
+              () -> {
+                System.out.println("Running static breath command");
+                setPeriodDiscretization(0);
+                breath(new Color(255, 0, 0), 3);
+              },
+              this)
+          .ignoringDisable(true);
+    }
+  }
+
+  public Command gamePieceFlashCommand() {
+    return Commands.runOnce(
+            () -> {
+              System.out.println("RUNNING gamePieceFlashCommand");
+              setPeriodDiscretization(0);
+              flash(new Color(235, 825, 22), 0.25);
+            })
+        .ignoringDisable(true);
+  }
+
+  public Command seeingAprilTag() {
+    return Commands.runOnce(
+            () -> {
+              System.out.println("RUNNING aprilTagDetectLED");
+              setPeriodDiscretization(0);
+              flash(new Color(0, 255, 0), 0.25);
+            })
+        .ignoringDisable(true);
+  }
+
+  public Command ejectCommand() {
+    return Commands.runOnce(
+            () -> {
+              System.out.println("RUNNING ejectCommand");
+              setPeriodDiscretization(0);
+              countup(new Color(0, 0, 255), 1.5, 1);
+              // solid(new Color(0, 0, 0), 0.25);
+            })
+        .ignoringDisable(true);
+  }
+
+  public Command randomCommand() {
+    return Commands.runOnce(
+            () -> {
+              System.out.println("RUNNING randomCommand");
+              setPeriodDiscretization(10);
+              random(new ColorHSV(0, 255, 50), 2.5);
+            })
+        .ignoringDisable(true);
   }
 }

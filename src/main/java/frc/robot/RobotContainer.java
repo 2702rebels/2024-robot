@@ -1,11 +1,5 @@
 package frc.robot;
 
-import com.choreo.lib.ChoreoTrajectory;
-import com.pathplanner.lib.auto.AutoBuilder;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
@@ -14,37 +8,26 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import frc.robot.commands.DriveCommands;
-import frc.robot.subsystems.drive.Drive;
-import frc.robot.subsystems.drive.DriveConstants;
-import frc.robot.subsystems.drive.GyroIO;
-import frc.robot.subsystems.drive.GyroIOPigeon2;
-import frc.robot.subsystems.drive.ModuleIO;
-import frc.robot.subsystems.drive.ModuleIOSim;
-import frc.robot.subsystems.drive.ModuleIOSparkMax;
-import frc.robot.subsystems.vision.AprilTagDetector;
-import frc.robot.subsystems.vision.NoteDetector;
+import frc.robot.subsystems.led.LedConstants;
+import frc.robot.subsystems.led.LedSubsystem;
 import frc.robot.util.LoggedTunableNumber;
-import frc.robot.util.TrajectoryLoader;
-import java.util.Map;
 import java.util.function.Function;
-import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
   // subsystems
-  private final Drive drive;
-  private final NoteDetector noteDetector = new NoteDetector();
-  private final AprilTagDetector aprilTagDetector = new AprilTagDetector();
-  // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
+  // private final Drive drive;
+  // private final NoteDetector noteDetector = new NoteDetector();
+  // private final AprilTagDetector aprilTagDetector = new AprilTagDetector();
+  private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
 
   // loaded chore trajectories
-  private final Map<String, ChoreoTrajectory> trajectories;
+  // private final Map<String, ChoreoTrajectory> trajectories;
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
 
   // dashboard inputs
-  private final LoggedDashboardChooser<Command> autoChooser;
+  // private final LoggedDashboardChooser<Command> autoChooser;
 
   private static final LoggedTunableNumber endgameAlert1 =
       new LoggedTunableNumber("Endgame/Alert 1", 30.0);
@@ -56,32 +39,32 @@ public class RobotContainer {
     switch (Constants.currentMode) {
       case REAL:
         // real robot, instantiate hardware IO implementations
-        drive =
-            new Drive(
-                new GyroIOPigeon2(CanID.GYRO_CONTROLLER, true),
-                (Integer index) ->
-                    new ModuleIOSparkMax(
-                        DriveConstants.moduleConfigs[index],
-                        DriveConstants.moduleAngularOffsets[index],
-                        DriveConstants.drivetrainConfig));
+        // drive =
+        // new Drive(
+        //     new GyroIOPigeon2(CanID.GYRO_CONTROLLER, true),
+        //     (Integer index) ->
+        //         new ModuleIOSparkMax(
+        //             DriveConstants.moduleConfigs[index],
+        //             DriveConstants.moduleAngularOffsets[index],
+        //             DriveConstants.drivetrainConfig));
         break;
 
       case SIM:
         // sim robot, instantiate physics sim IO implementations
-        drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
+        // drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
         break;
 
       default:
         // replayed robot, disable IO implementations
-        drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
+        // drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
         break;
     }
 
     // load trajectories from the file system
-    trajectories = TrajectoryLoader.loadChoreoTrajectories();
+    // trajectories = TrajectoryLoader.loadChoreoTrajectories();
 
     // set up auto routines
-    autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+    // autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     configureBindings();
     configureEndgameAlerts();
@@ -104,30 +87,45 @@ public class RobotContainer {
    * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
    */
   private void configureBindings() {
-    drive.setDefaultCommand(
-        DriveCommands.joystickDrive(
-            drive,
-            () -> -controllerDriver.getLeftX(),
-            () -> -controllerDriver.getLeftY(),
-            () -> -controllerDriver.getRightX()));
+    // drive.setDefaultCommand(
+    //     DriveCommands.joystickDrive(
+    //         drive,
+    //         () -> -controllerDriver.getLeftX(),
+    //         () -> -controllerDriver.getLeftY(),
+    //         () -> -controllerDriver.getRightX()));
 
-    controllerDriver.x().whileTrue(Commands.run(drive::stopWithX));
-    controllerDriver
-        .b()
-        .onTrue(
-            Commands.runOnce(
-                    () -> {
-                      drive.setPose(new Pose2d(new Translation2d(), new Rotation2d()));
-                      drive.reset();
-                    })
-                .ignoringDisable(true));
+    // controllerDriver.x().whileTrue(Commands.run(drive::stopWithX));
+    // controllerDriver
+    //     .b()
+    //     .onTrue(
+    //         Commands.runOnce(
+    //                 () -> {
+    //                   drive.setPose(new Pose2d(new Translation2d(), new Rotation2d()));
+    //                   drive.reset();
+    //                 })
+    //             .ignoringDisable(true));
 
     // orientation locks
-    controllerDriver
-        .leftBumper()
-        .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
+    // controllerDriver
+    // .leftBumper()
+    // .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
 
-    controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
+    // controllerDriver.rightBumper().onTrue(Commands.runOnce(() ->
+    // drive.toggleOrientationLock(0)));
+
+    controllerDriver.b().onTrue(led.gamePieceFlashCommand());
+
+    controllerDriver.a().onTrue(led.breathCommand("speaker"));
+
+    controllerDriver.x().onTrue(led.breathCommand("amp"));
+
+    controllerDriver.y().onTrue(led.breathCommand(""));
+
+    controllerDriver.leftTrigger().onTrue(led.ejectCommand());
+
+    controllerDriver.rightTrigger().onTrue(led.randomCommand());
+
+    controllerDriver.leftBumper().onTrue(led.seeingAprilTag());
   }
 
   /**
@@ -170,6 +168,7 @@ public class RobotContainer {
   }
 
   public Command getAutonomousCommand() {
-    return autoChooser.get();
+    // return autoChooser.get();
+    return Commands.none();
   }
 }
