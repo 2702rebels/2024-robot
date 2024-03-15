@@ -17,7 +17,6 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
 import frc.robot.commands.IntakeCommand;
 import frc.robot.commands.ScoreInSpeaker;
@@ -114,14 +113,13 @@ public class RobotContainer {
     // load trajectories from the file system
     trajectories = TrajectoryLoader.loadChoreoTrajectories();
 
-    // set up auto routines
-    autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
-
     configureBindings();
-    configureTriggers();
     configureEndgameAlerts();
 
     led.breath(new Color(255, 0, 0), 5);
+
+    // set up auto routines
+    autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     // testing
     // controllerDriver
@@ -156,11 +154,12 @@ public class RobotContainer {
     //             .withName("DriveToNoteAndIntake"));
 
     // sysid routines
-    autoChooser.addOption(
-        "Shooter SysId (Quasistatic Forward)",
-        shooter.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    autoChooser.addOption(
-        "Shooter SysId (Dynamic Forward)", shooter.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // autoChooser.addOption(
+    //     "Shooter SysId (Quasistatic Forward)",
+    //     shooter.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // autoChooser.addOption(
+    //     "Shooter SysId (Dynamic Forward)",
+    // shooter.sysIdDynamic(SysIdRoutine.Direction.kForward));
   }
 
   /**
@@ -195,14 +194,14 @@ public class RobotContainer {
             Commands.either(
                 Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(90))),
                 Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(-90))),
-                () -> DriverStation.getAlliance().get() == Alliance.Red));
+                () -> DriverStation.getAlliance().get() == Alliance.Blue));
     controllerDriver
         .rightBumper()
         .onTrue(
             Commands.either(
                 Commands.runOnce(() -> drive.toggleOrientationLock(-45)),
                 Commands.runOnce(() -> drive.toggleOrientationLock(45)),
-                () -> DriverStation.getAlliance().get() == Alliance.Red));
+                () -> DriverStation.getAlliance().get() == Alliance.Blue));
 
     // Intake
     controllerDriver.leftTrigger().whileTrue(new IntakeCommand(intake, pivot, shooter));
@@ -243,14 +242,6 @@ public class RobotContainer {
         .onTrue(
             Commands.parallel(
                 pivot.moveArmToPosition(20), Commands.runOnce(() -> shooter.stop(), shooter)));
-  }
-
-  private void configureTriggers() {
-    new Trigger(() -> intake.isIntaking() && shooter.isBackBeamTripped() && !shooter.isFeeding())
-        .onTrue(
-            Commands.parallel(
-                    intake.intake().until(() -> shooter.isFrontBeamTripped()), shooter.feedIn())
-                .andThen(pivot.moveArmToPosition(20, 3)));
   }
 
   /**

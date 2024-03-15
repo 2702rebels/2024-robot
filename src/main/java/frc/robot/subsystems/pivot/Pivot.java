@@ -114,7 +114,7 @@ public class Pivot extends SubsystemBase {
   public void setRequestedAngle(double angle) {
     if (!enabled) {
       enabled = true;
-      System.out.println("Enabling pivot control loop flag.");
+      System.out.println("Enabling pivot control loop.");
     }
     requestedPosInDeg = MathUtil.clamp(angle, minPivotAngle.get(), maxPivotAngle.get());
   }
@@ -148,7 +148,7 @@ public class Pivot extends SubsystemBase {
     return Commands.runOnce(
         () -> {
           enabled = true;
-          System.out.println("Enabling pivot control loop flag.");
+          System.out.println("Enabling pivot control loop.");
         },
         this);
   }
@@ -158,7 +158,7 @@ public class Pivot extends SubsystemBase {
     return Commands.runOnce(
             () -> {
               enabled = false;
-              System.out.println("Disabling pivot control loop flag.");
+              System.out.println("Disabling pivot control loop.");
             },
             this)
         .ignoringDisable(true);

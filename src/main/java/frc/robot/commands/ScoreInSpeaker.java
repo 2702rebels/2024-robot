@@ -4,6 +4,7 @@
 
 package frc.robot.commands;
 
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -59,8 +60,18 @@ public class ScoreInSpeaker extends Command {
     Logger.recordOutput("TrackedShooter/Speed", speed);
 
     if (tag.tracked) {
-      pivot.setRequestedAngle(-pivotAngle);
       drive.enableOrientationLock(drive.getRotation().getRadians() - turnAngle);
+
+      // Hack to update drive train directly if running in auto. Instead of the hack to piggyback
+      // off the teleop drive command.
+      if (DriverStation.isAutonomous()) {
+        final var speeds =
+            ChassisSpeeds.fromFieldRelativeSpeeds(
+                0, 0, drive.getOrientationLockRotation(), drive.getRotation());
+        drive.runVelocity(speeds);
+      }
+
+      pivot.setRequestedAngle(-pivotAngle);
       shooter.spinUp(speed);
 
       if (pivot.isAtGoal()
