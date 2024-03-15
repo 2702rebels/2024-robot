@@ -245,6 +245,8 @@ public class RobotContainer {
                 pivot.moveArmToPosition(20), Commands.runOnce(() -> shooter.stop(), shooter)));
 
     led.setDefaultCommand(led.breathCommand(""));
+
+    new Trigger(() -> shooter.hasGamePiece()).onTrue(led.gamePieceFlashCommand().withTimeout(1.5));
   }
 
   /**
