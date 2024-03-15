@@ -13,6 +13,9 @@ public interface ClimbIO {
     public double position = 0.0;
     public double appliedVolts = 0.0;
     public double currentAmps = 0.0;
+    public double velocity = 0.0;
+
+    public boolean limitSwitchClosed = false;
   }
 
   public default void updateInputs(ClimbIOInputs inputs) {}
@@ -25,5 +28,5 @@ public interface ClimbIO {
 
   public default void configurePID(double kP, double kI, double kD) {}
 
-  public default void setservoposition(double position) {}
+  public default void setServoPosition(double degrees) {} // Used to control the ratchet
 }

@@ -5,12 +5,15 @@
 package frc.robot.subsystems.climb;
 
 import com.revrobotics.CANSparkBase.ControlType;
+import com.revrobotics.CANSparkBase.IdleMode;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.SparkPIDController;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.Servo;
 import frc.robot.CanID;
+import frc.robot.Constants;
 
 /** Add your docs here. */
 public class ClimbIOSparkMax implements ClimbIO {
@@ -21,11 +24,22 @@ public class ClimbIOSparkMax implements ClimbIO {
   // private AnalogOutput ratchet = new AnalogOutput(0)
   private Servo ratchet = new Servo(CLIMB_SERVO);
 
+  private DigitalInput limitSwitchClosed = new DigitalInput(Constants.CLIMB_LIMITSWITCH);
+
+  public ClimbIOSparkMax() {
+    // Configure and save settings to leader motor controller.
+    motor.restoreFactoryDefaults();
+    motor.setSmartCurrentLimit(60);
+    motor.setIdleMode(IdleMode.kCoast);
+    motor.burnFlash();
+  }
+
   @Override
   public void updateInputs(ClimbIOInputs inputs) {
     inputs.position = encoder.getPosition();
     inputs.currentAmps = motor.getOutputCurrent();
     inputs.appliedVolts = motor.getBusVoltage();
+    inputs.limitSwitchClosed = limitSwitchClosed.get();
   }
 
   @Override
@@ -49,7 +63,8 @@ public class ClimbIOSparkMax implements ClimbIO {
     pid.setI(kI);
     pid.setD(kD);
   }
-  // public void setServoPosition(double degrees) {
-  // ratchet.setAngle(degrees);
-  // }
+
+  public void setServoPosition(double degrees) {
+    ratchet.setAngle(degrees);
+  }
 }
