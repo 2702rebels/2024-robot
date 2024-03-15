@@ -14,6 +14,10 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.DriveCommands;
+import frc.robot.subsystems.climb.Climb;
+import frc.robot.subsystems.climb.ClimbIO;
+import frc.robot.subsystems.climb.ClimbIOSim;
+import frc.robot.subsystems.climb.ClimbIOSparkMax;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -29,6 +33,7 @@ public class RobotContainer {
   // subsystems
   private final Drive drive;
   // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
+  private final Climb climb;
 
   // driver controller
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
@@ -54,16 +59,19 @@ public class RobotContainer {
                         DriveConstants.moduleConfigs[index],
                         DriveConstants.moduleAngularOffsets[index],
                         DriveConstants.drivetrainConfig));
+        climb = new Climb(new ClimbIOSparkMax());
         break;
 
       case SIM:
         // sim robot, instantiate physics sim IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIOSim());
+        climb = new Climb(new ClimbIOSim());
         break;
 
       default:
         // replayed robot, disable IO implementations
         drive = new Drive(new GyroIO() {}, (Integer index) -> new ModuleIO() {});
+        climb = new Climb(new ClimbIO() {});
         break;
     }
 
@@ -105,6 +113,17 @@ public class RobotContainer {
         .onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(180))));
 
     controllerDriver.rightBumper().onTrue(Commands.runOnce(() -> drive.toggleOrientationLock(0)));
+
+    controllerDriver.b().whileTrue(climb.retractHooks());
+    controllerDriver.rightTrigger().whileTrue(climb.homeHooks(true));
+
+    controllerDriver
+        .y()
+        .whileTrue(
+            climb.homeHooks(false).andThen(Commands.waitSeconds(1)).andThen(climb.raiseHooks()));
+
+    controllerDriver.povRight().onTrue(climb.setServoOn());
+    controllerDriver.povLeft().onTrue(climb.setServoOff());
   }
 
   /**

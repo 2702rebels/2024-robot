@@ -30,7 +30,7 @@ public class ClimbIOSparkMax implements ClimbIO {
     // Configure and save settings to leader motor controller.
     motor.restoreFactoryDefaults();
     motor.setSmartCurrentLimit(60);
-    motor.setIdleMode(IdleMode.kCoast);
+    motor.setIdleMode(IdleMode.kBrake);
     motor.burnFlash();
   }
 
