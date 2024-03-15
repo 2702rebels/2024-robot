@@ -43,12 +43,11 @@ public class NoteDetector extends SubsystemBase {
   }
 
   public void periodic() {
-
     final var cutoff = detectionProbabilityCutoff.get();
     final var queue = subscriber.readQueue();
     if (queue.length > 0) {
       for (var i = 0; i < queue.length; ++i) {
-        final var timestamp = queue[i].timestamp;
+        final var timestamp = queue[i].timestamp / 1E6;
         final var frame = queue[i].value;
 
         // keep track of the note detected with highest probability
@@ -137,6 +136,12 @@ public class NoteDetector extends SubsystemBase {
   @AutoLogOutput(key = "Vision/NoteDetector/NoteDistance")
   public double getNoteDistanceInches() {
     return trackedNote == null ? Double.NaN : trackedNote.distanceInches();
+  }
+
+  /** Returns most recently detected note distance trust. */
+  @AutoLogOutput(key = "Vision/NoteDetector/NoteDistanceTrusted")
+  public boolean getNoteDistanceTrusted() {
+    return trackedNote == null ? false : trackedNote.distanceTrusted();
   }
 
   /** Returns most recently detected note yaw in degrees. */

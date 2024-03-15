@@ -37,9 +37,9 @@ public class ScoreInSpeaker extends Command {
   public void initialize() {
     // Get the tag we need to be scoring on.
     if (DriverStation.getAlliance().get() == Alliance.Red) {
-      tag = aprilTagDetector.getTag(7);
-    } else {
       tag = aprilTagDetector.getTag(3);
+    } else {
+      tag = aprilTagDetector.getTag(7);
     }
 
     shooter.spinUp(4000);

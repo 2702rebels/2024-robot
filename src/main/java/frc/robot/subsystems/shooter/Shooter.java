@@ -135,6 +135,16 @@ public class Shooter extends SubsystemBase {
     subsystemIO.setFeedPercentOutput(0.7);
   }
 
+  public void startFeed() {
+    subsystemIO.setFeedPercentOutput(0.3);
+    feeding = true;
+  }
+
+  public void stopFeed() {
+    subsystemIO.stopFeed();
+    feeding = false;
+  }
+
   public Command feedIn() {
     return new StartEndCommand(
             () -> {

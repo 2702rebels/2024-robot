@@ -29,17 +29,17 @@ public class Intake extends SubsystemBase {
     Logger.processInputs("Intake/Motor", subsystemInputs);
   }
 
-  private void start() {
+  public void start() {
     subsystemIO.setSpeed(intakeSpeed.get());
     intaking = true;
   }
 
-  private void stop() {
+  public void stop() {
     subsystemIO.setSpeed(0);
     intaking = false;
   }
 
-  private void reverse() {
+  public void reverse() {
     subsystemIO.setSpeed(-intakeSpeed.get());
   }
 

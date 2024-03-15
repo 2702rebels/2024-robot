@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
+import frc.robot.commands.IntakeCommand;
 import frc.robot.commands.ScoreInSpeaker;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
@@ -123,14 +124,36 @@ public class RobotContainer {
     led.breath(new Color(255, 0, 0), 5);
 
     // testing
-    // controllerDriver.a().onTrue(new DriveTrajectory(trajectories.get("Test"), true, true,
-    // drive));
     // controllerDriver
-    //     .rightTrigger()
+    //     .a()
+    //     .onTrue(
+    // new SequentialCommandGroup(
+    //     new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector),
+    //     new DriveTrajectory(trajectories.get("InitRightToNote"), true, true, drive)
+    //         .alongWith(new IntakeCommand(intake, pivot, shooter))
+    //         .withTimeout(2),
+    //     new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector),
+    //     new DriveTrajectory(trajectories.get("RightToNote1"), false, true, drive)
+    //         .alongWith(new IntakeCommand(intake, pivot, shooter))
+    //         .withTimeout(3)));
+    // new SequentialCommandGroup(
+    //     new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector),
+    //     new DriveTrajectory(trajectories.get("InitCenterToNote"), true, true, drive)
+    //         .alongWith(new IntakeCommand(intake, pivot, shooter))
+    //         .withTimeout(2),
+    //     new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector),
+    //     new DriveTrajectory(trajectories.get("CenterToNote3"), false, true, drive)
+    //         .alongWith(new IntakeCommand(intake, pivot, shooter))
+    //         .withTimeout(3)));
+
+    // controllerDriver
+    //     .rightBumper()
     //     .whileTrue(
     //         new DriveToNote(drive, noteDetector, false)
     //             .until(() -> !noteDetector.hasTrackedNote())
-    //             .withName("DriveToNote"));
+    //             .alongWith(new IntakeCommand(intake, pivot, shooter))
+    //             .unless(() -> !noteDetector.hasTrackedNote())
+    //             .withName("DriveToNoteAndIntake"));
 
     // sysid routines
     autoChooser.addOption(
@@ -182,9 +205,7 @@ public class RobotContainer {
                 () -> DriverStation.getAlliance().get() == Alliance.Red));
 
     // Intake
-    controllerDriver
-        .leftTrigger()
-        .whileTrue(pivot.moveArmToPosition(90, 5).andThen(intake.intake()));
+    controllerDriver.leftTrigger().whileTrue(new IntakeCommand(intake, pivot, shooter));
 
     // Outtake
     controllerDriver.y().whileTrue(intake.outake());

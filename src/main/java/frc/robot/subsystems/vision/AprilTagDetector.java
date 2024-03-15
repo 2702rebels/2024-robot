@@ -3,6 +3,7 @@ package frc.robot.subsystems.vision;
 import edu.wpi.first.networktables.DoubleArraySubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.PubSubOption;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
@@ -29,6 +30,8 @@ public class AprilTagDetector extends SubsystemBase {
     for (var i = 0; i < tags.length; ++i) {
       tags[i] = new AprilTag(i + 1);
     }
+
+    SmartDashboard.putNumber("/Vision/Exposure", 480);
   }
 
   public void periodic() {

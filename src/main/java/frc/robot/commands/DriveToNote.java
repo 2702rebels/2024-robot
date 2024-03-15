@@ -64,11 +64,11 @@ public class DriveToNote extends DriveToPose {
       // except when the distance cannot be trusted, then only
       // command robot to rotate in place
       if (!disableMovement && noteDistanceTrusted) {
-        final var vector =
-            new Translation2d(note.distanceMeters(), 0)
-                .rotateBy(note.yaw().unaryMinus())
-                .plus(NoteDetectorConstants.CameraTranslationMeters);
         final var desiredRotation = Misc.subtract(currentPose.getRotation(), note.yaw());
+        final var vector =
+            new Translation2d(noteDistance, 0)
+                .rotateBy(desiredRotation)
+                .plus(NoteDetectorConstants.CameraTranslationMeters);
         pose = new Pose2d(currentPose.getTranslation().plus(vector), desiredRotation);
       } else {
         final var desiredRotation = Misc.subtract(currentPose.getRotation(), note.yaw());
