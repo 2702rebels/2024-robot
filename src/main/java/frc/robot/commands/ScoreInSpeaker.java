@@ -39,7 +39,7 @@ public class ScoreInSpeaker extends Command {
     if (DriverStation.getAlliance().get() == Alliance.Red) {
       tag = aprilTagDetector.getTag(7);
     } else {
-      tag = aprilTagDetector.getTag(3); // ?
+      tag = aprilTagDetector.getTag(3);
     }
 
     shooter.spinUp(4000);
@@ -55,12 +55,16 @@ public class ScoreInSpeaker extends Command {
     final var turnAngle = Math.atan2(tag.x, tag.z);
     Logger.recordOutput("TrackedShooting/TurnAngle", turnAngle);
 
+    final var speed = tag.z > 4.0 ? 4000 : 3000;
+    Logger.recordOutput("TrackedShooter/Speed", speed);
+
     if (tag.tracked) {
       pivot.setRequestedAngle(-pivotAngle);
       drive.enableOrientationLock(drive.getRotation().getRadians() - turnAngle);
+      shooter.spinUp(speed);
 
       if (pivot.isAtGoal()
-          && shooter.isAtSpeed(4000)
+          && shooter.isAtSpeed(speed)
           && Math.abs((turnAngle * 180 / Math.PI)) < 3) {
         shooter.feedOut();
       }
@@ -77,7 +81,6 @@ public class ScoreInSpeaker extends Command {
   // Returns true when the command should end.
   @Override
   public boolean isFinished() {
-    return false;
-    // return !shooter.hasGamePiece();
+    return !shooter.hasGamePiece();
   }
 }

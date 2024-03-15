@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -30,6 +31,8 @@ import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.intake.IntakeIOSparkMax;
+import frc.robot.subsystems.led.LedConstants;
+import frc.robot.subsystems.led.LedSubsystem;
 import frc.robot.subsystems.pivot.Pivot;
 import frc.robot.subsystems.pivot.PivotIO;
 import frc.robot.subsystems.pivot.PivotIOSim;
@@ -54,7 +57,7 @@ public class RobotContainer {
   private final Intake intake;
   private final Pivot pivot;
   private final Shooter shooter;
-  // private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
+  private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
 
   // loaded choreo trajectories
   private final Map<String, ChoreoTrajectory> trajectories;
@@ -116,6 +119,8 @@ public class RobotContainer {
     configureBindings();
     configureTriggers();
     configureEndgameAlerts();
+
+    led.breath(new Color(255, 0, 0), 5);
 
     // testing
     // controllerDriver.a().onTrue(new DriveTrajectory(trajectories.get("Test"), true, true,
