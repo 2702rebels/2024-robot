@@ -22,6 +22,10 @@ import frc.robot.commands.DriveCommands;
 import frc.robot.commands.DriveTrajectory;
 import frc.robot.commands.IntakeCommand;
 import frc.robot.commands.ScoreInSpeaker;
+import frc.robot.subsystems.climb.Climb;
+import frc.robot.subsystems.climb.ClimbIO;
+import frc.robot.subsystems.climb.ClimbIOSim;
+import frc.robot.subsystems.climb.ClimbIOSparkMax;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.GyroIO;
@@ -59,6 +63,7 @@ public class RobotContainer {
   private final Pivot pivot;
   private final Shooter shooter;
   private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
+  private final Climb climb;
 
   // loaded choreo trajectories
   private final Map<String, ChoreoTrajectory> trajectories;
@@ -96,6 +101,7 @@ public class RobotContainer {
         intake = new Intake(new IntakeIOSparkMax());
         pivot = new Pivot(new PivotIOSparkMax(CanID.MOTOR_PIVOT));
         shooter = new Shooter(new ShooterIOSparkMaxes());
+        climb = new Climb(new ClimbIOSparkMax());
         break;
 
       case SIM:
@@ -104,6 +110,7 @@ public class RobotContainer {
         intake = new Intake(new IntakeIOSim());
         pivot = new Pivot(new PivotIOSim());
         shooter = new Shooter(new ShooterIOSim());
+        climb = new Climb(new ClimbIOSim());
         break;
 
       default:
@@ -112,6 +119,7 @@ public class RobotContainer {
         intake = new Intake(new IntakeIO() {});
         pivot = new Pivot(new PivotIO() {});
         shooter = new Shooter(new ShooterIO() {});
+        climb = new Climb(new ClimbIO() {});
         break;
     }
 
@@ -262,6 +270,13 @@ public class RobotContainer {
     new Trigger(() -> shooter.hasGamePiece()).onTrue(led.gamePieceFlashCommand().withTimeout(1.5));
 
     controllerDriver.povLeft().whileTrue(shooter.reindex().withTimeout(2));
+
+    controllerDriver
+        .povUp()
+        .onTrue(
+            climb.homeHooks(false).andThen(Commands.waitSeconds(0.2)).andThen(climb.raiseHooks()));
+
+    controllerDriver.back().onTrue(climb.retractHooks());
   }
 
   /**

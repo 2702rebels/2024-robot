@@ -20,4 +20,6 @@ public final class CanID {
   public static final int MOTOR_SHOOTER_FEED = 13;
   public static final int MOTOR_SHOOTER_LEADER = 14;
   public static final int MOTOR_SHOOTER_FOLLOWER = 15;
+
+  public static final int MOTOR_CLIMB = 16;
 }
