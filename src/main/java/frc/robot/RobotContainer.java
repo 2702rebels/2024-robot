@@ -14,7 +14,6 @@ import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.DriveCommands;
@@ -152,34 +151,77 @@ public class RobotContainer {
     seesTagsCommand.setName("seesTags");
   }
 
+  /** Creates new command that drives specified trajectory with intake running. */
+  private Command driveAndIntake(String trajectoryName, double timeoutSeconds) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), true, true, drive)
+        .alongWith(new IntakeCommand(intake, pivot, shooter))
+        .withTimeout(timeoutSeconds);
+  }
+
+  /** Creates new command that scores in speaker. */
+  private Command scoreInSpeaker() {
+    return new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led);
+  }
+
   /** Sets up our auto chooser and auto objects. */
   private void configureAutoRoutines() {
-    Command ampSideAuto =
-        new SequentialCommandGroup(
-            new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led),
-            new DriveTrajectory(trajectories.get("InitRightToNote"), true, true, drive)
-                .alongWith(new IntakeCommand(intake, pivot, shooter))
-                .withTimeout(2),
-            new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led),
-            new DriveTrajectory(trajectories.get("RightToNote1"), false, true, drive)
-                .alongWith(new IntakeCommand(intake, pivot, shooter))
-                .withTimeout(3));
-    autoChooser.addOption("Amp Side Auto", ampSideAuto);
+    autoChooser.addOption(
+        "Amp Auto 1",
+        Commands.sequence(
+            scoreInSpeaker(),
+            driveAndIntake("InitAmpNote", 2),
+            scoreInSpeaker(),
+            driveAndIntake("AmpToNote1", 3)));
 
-    Command centerAuto =
-        new SequentialCommandGroup(
-            new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led),
-            new DriveTrajectory(trajectories.get("InitCenterToNote"), true, true, drive)
-                .alongWith(new IntakeCommand(intake, pivot, shooter))
-                .withTimeout(2),
-            new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led),
-            new DriveTrajectory(trajectories.get("CenterToNote3"), false, true, drive)
-                .alongWith(new IntakeCommand(intake, pivot, shooter))
-                .withTimeout(3));
-    autoChooser.addOption("Center Auto", centerAuto);
+    autoChooser.addOption(
+        "Amp Auto 2",
+        Commands.sequence(
+            scoreInSpeaker(),
+            driveAndIntake("InitAmpNote", 2),
+            scoreInSpeaker(),
+            driveAndIntake("AmpToNote2", 3)));
 
-    Command doNothingAuto = Commands.none();
-    autoChooser.addOption("Do Nothing", doNothingAuto);
+    autoChooser.addOption(
+        "Center Auto 1",
+        Commands.sequence(
+            scoreInSpeaker(),
+            driveAndIntake("InitCenterToNote", 2),
+            scoreInSpeaker(),
+            driveAndIntake("CenterToNote1", 3)));
+
+    autoChooser.addOption(
+        "Center Auto 2",
+        Commands.sequence(
+            scoreInSpeaker(),
+            driveAndIntake("InitCenterToNote", 2),
+            scoreInSpeaker(),
+            driveAndIntake("CenterToNote2", 3)));
+
+    autoChooser.addOption(
+        "Center Auto 3",
+        Commands.sequence(
+            scoreInSpeaker(),
+            driveAndIntake("InitCenterToNote", 2),
+            scoreInSpeaker(),
+            driveAndIntake("CenterToNote3", 3)));
+
+    autoChooser.addOption(
+        "Center Auto 4",
+        Commands.sequence(
+            scoreInSpeaker(),
+            driveAndIntake("InitCenterToNote", 2),
+            scoreInSpeaker(),
+            driveAndIntake("CenterToNote4", 3)));
+
+    autoChooser.addOption(
+        "Load Auto 5",
+        Commands.sequence(
+            scoreInSpeaker(),
+            driveAndIntake("InitLoadToNote", 2),
+            scoreInSpeaker(),
+            driveAndIntake("StageToNote5", 3)));
+
+    autoChooser.addOption("Do Nothing", Commands.none());
   }
 
   /**
