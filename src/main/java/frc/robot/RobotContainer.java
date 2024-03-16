@@ -67,8 +67,7 @@ public class RobotContainer {
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
 
   // dashboard inputs
-  private final LoggedDashboardChooser<Command> autoChooser =
-      new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+  private final LoggedDashboardChooser<Command> autoChooser;
 
   private static final LoggedTunableNumber endgameAlert1 =
       new LoggedTunableNumber("Endgame/Alert 1", 30.0);
@@ -120,6 +119,8 @@ public class RobotContainer {
 
     configureBindings();
     configureEndgameAlerts();
+
+    autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
     configureAutoRoutines();
 
     led.breath(new Color(255, 0, 0), 5);
