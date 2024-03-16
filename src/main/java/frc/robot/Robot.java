@@ -34,7 +34,7 @@ public class Robot extends LoggedRobot {
     var bpIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").publish();
     bpIsLogging.set(false);
     // Pi is logging
-    var cameraIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").subscribe(false);
+    cameraIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").subscribe(false);
 
     // record metadata
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
