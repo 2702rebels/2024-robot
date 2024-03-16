@@ -5,10 +5,7 @@
 package frc.robot;
 
 import edu.wpi.first.networktables.BooleanSubscriber;
-import edu.wpi.first.networktables.BooleanTopic;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.PubSubOption;
-import edu.wpi.first.networktables.PubSubOptions;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import java.util.HashMap;
@@ -99,12 +96,11 @@ public class Robot extends LoggedRobot {
   @Override
   public void disabledInit() {
     robotContainer.onDisable();
-
   }
 
   @Override
   public void disabledPeriodic() {
-    if(cameraIsLogging.get()) {
+    if (cameraIsLogging.get()) {
       robotContainer.isLogging(true);
     } else {
       robotContainer.isLogging(false);

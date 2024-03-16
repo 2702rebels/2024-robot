@@ -76,9 +76,8 @@ public class RobotContainer {
   private static final LoggedTunableNumber endgameAlert2 =
       new LoggedTunableNumber("Endgame/Alert 2", 10.0);
 
-      private Command loggingCommand;
-      private Command idleCommand;
-
+  private Command loggingCommand;
+  private Command idleCommand;
 
   public RobotContainer() {
 
@@ -312,10 +311,10 @@ public class RobotContainer {
   }
 
   public void isLogging(boolean logging) {
-    if(logging && led.getCurrentCommand().getName() != "isLogging") {
-        CommandScheduler.getInstance().schedule(loggingCommand);
+    if (logging && led.getCurrentCommand().getName() != "isLogging") {
+      CommandScheduler.getInstance().schedule(loggingCommand);
     } else if (!logging && led.getCurrentCommand().getName() != "idle") {
-        CommandScheduler.getInstance().schedule(idleCommand);
+      CommandScheduler.getInstance().schedule(idleCommand);
     }
   }
 }

@@ -192,7 +192,7 @@ public class LedSubsystem extends SubsystemBase {
         .ignoringDisable(true);
   }
 
-    public Command isLogging() {
+  public Command isLogging() {
     return new FunctionalCommand(
             () -> {
               // System.out.println("RUNNING gamePieceFlashCommand");
