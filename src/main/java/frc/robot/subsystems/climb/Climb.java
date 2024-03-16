@@ -62,7 +62,8 @@ public class Climb extends SubsystemBase {
             // Turn on climb motor at command start
             () -> {
               // Make sure ratchet is engaged
-              if (engageRatchet) subsystemio.setServoPosition(ratchetOnAngle.get());
+              // if (engageRatchet) subsystemio.setServoPosition(ratchetOnAngle.get());
+              subsystemio.setServoPosition(ratchetOffAngle.get());
               // Run climb motor
               subsystemio.setPercentOutput(homeSpeed.get());
             },
