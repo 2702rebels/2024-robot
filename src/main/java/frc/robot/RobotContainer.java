@@ -273,7 +273,7 @@ public class RobotContainer {
     controllerDriver
         .povUp()
         .onTrue(
-            climb.homeHooks(false).andThen(Commands.waitSeconds(0.2)).andThen(climb.raiseHooks()));
+            climb.homeHooks(false).andThen(climb.raiseHooks()));
 
     controllerDriver.back().onTrue(climb.retractHooks());
   }
