@@ -247,6 +247,8 @@ public class RobotContainer {
     led.setDefaultCommand(led.breathCommand(""));
 
     new Trigger(() -> shooter.hasGamePiece()).onTrue(led.gamePieceFlashCommand().withTimeout(1.5));
+
+    controllerDriver.povLeft().whileTrue(shooter.reindex().withTimeout(2));
   }
 
   /**

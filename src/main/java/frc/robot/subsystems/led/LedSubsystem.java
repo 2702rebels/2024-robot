@@ -142,7 +142,7 @@ public class LedSubsystem extends SubsystemBase {
     if (state.equals("amp")) {
       return Commands.runOnce(
               () -> {
-                System.out.println("Running amp breath command");
+                // System.out.println("Running amp breath command");
                 setPeriodDiscretization(0);
                 breath(new Color(255, 255, 255), 3);
               },
@@ -151,7 +151,7 @@ public class LedSubsystem extends SubsystemBase {
     } else if (state.equals("speaker")) {
       return Commands.runOnce(
               () -> {
-                System.out.println("Running speaker breath command");
+                // System.out.println("Running speaker breath command");
                 setPeriodDiscretization(0);
                 breath(new Color(255, 0, 255), 3);
               },
@@ -160,7 +160,7 @@ public class LedSubsystem extends SubsystemBase {
     } else {
       return Commands.runOnce(
               () -> {
-                System.out.println("Running static breath command");
+                // System.out.println("Running static breath command");
                 setPeriodDiscretization(0);
                 breath(new Color(255, 0, 0), 3);
               },
@@ -172,7 +172,7 @@ public class LedSubsystem extends SubsystemBase {
   public Command gamePieceFlashCommand() {
     return Commands.runOnce(
             () -> {
-              System.out.println("RUNNING gamePieceFlashCommand");
+              // System.out.println("RUNNING gamePieceFlashCommand");
               setPeriodDiscretization(0);
               flash(new Color(235, 825, 22), 0.25);
             })
@@ -182,7 +182,7 @@ public class LedSubsystem extends SubsystemBase {
   public Command seeingAprilTag() {
     return Commands.runOnce(
             () -> {
-              System.out.println("RUNNING aprilTagDetectLED");
+              // System.out.println("RUNNING aprilTagDetectLED");
               setPeriodDiscretization(0);
               flash(new Color(0, 255, 0), 0.25);
             })
@@ -192,7 +192,7 @@ public class LedSubsystem extends SubsystemBase {
   public Command ejectCommand() {
     return Commands.runOnce(
             () -> {
-              System.out.println("RUNNING ejectCommand");
+              // System.out.println("RUNNING ejectCommand");
               setPeriodDiscretization(0);
               countup(new Color(0, 0, 255), 1.5, 1);
               // solid(new Color(0, 0, 0), 0.25);
@@ -203,7 +203,7 @@ public class LedSubsystem extends SubsystemBase {
   public Command randomCommand() {
     return Commands.runOnce(
             () -> {
-              System.out.println("RUNNING randomCommand");
+              // System.out.println("RUNNING randomCommand");
               setPeriodDiscretization(10);
               random(new ColorHSV(0, 255, 50), 2.5);
             })

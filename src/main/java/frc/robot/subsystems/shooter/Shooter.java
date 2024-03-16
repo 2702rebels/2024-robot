@@ -162,6 +162,16 @@ public class Shooter extends SubsystemBase {
             });
   }
 
+  public Command reindex() {
+    return new FunctionalCommand(
+            () -> subsystemIO.setFeedPercentOutput(-0.2),
+            () -> {},
+            (interrupted) -> subsystemIO.setFeedPercentOutput(0.0),
+            () -> !isFrontBeamTripped(),
+            this)
+        .andThen(feedIn());
+  }
+
   /** Stops shooter and feed. */
   public void stop() {
     subsystemIO.stopFeed();
