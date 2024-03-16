@@ -29,6 +29,9 @@ public class Shooter extends SubsystemBase {
   private final LoggedTunableNumber atSpeedAllowance =
       new LoggedTunableNumber("Shooter/AtSpeedAllowance", 50);
 
+  private final LoggedTunableNumber manualSpeed =
+      new LoggedTunableNumber("Shooter.ManualSpeed", 2000);
+
   private final SysIdRoutine sysId;
 
   private boolean feeding = false;
@@ -114,6 +117,26 @@ public class Shooter extends SubsystemBase {
         },
         () -> {
           if (isAtSpeed(rpm) && okToShoot.getAsBoolean()) {
+            subsystemIO.setFeedPercentOutput(0.7);
+          }
+        },
+        (interupted) -> {
+          subsystemIO.stopFlywheel();
+          subsystemIO.stopFeed();
+        },
+        () -> {
+          return false;
+        },
+        this);
+  }
+
+  public Command manualShoot(BooleanSupplier okToShoot) {
+    return new FunctionalCommand(
+        () -> {
+          subsystemIO.setFlywheelSpeed(manualSpeed.get());
+        },
+        () -> {
+          if (isAtSpeed(manualSpeed.get()) && okToShoot.getAsBoolean()) {
             subsystemIO.setFeedPercentOutput(0.7);
           }
         },

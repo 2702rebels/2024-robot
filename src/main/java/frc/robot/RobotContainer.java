@@ -15,9 +15,11 @@ import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.DriveCommands;
+import frc.robot.commands.DriveTrajectory;
 import frc.robot.commands.IntakeCommand;
 import frc.robot.commands.ScoreInSpeaker;
 import frc.robot.subsystems.drive.Drive;
@@ -66,7 +68,8 @@ public class RobotContainer {
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
 
   // dashboard inputs
-  private final LoggedDashboardChooser<Command> autoChooser;
+  private final LoggedDashboardChooser<Command> autoChooser =
+      new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
   private static final LoggedTunableNumber endgameAlert1 =
       new LoggedTunableNumber("Endgame/Alert 1", 30.0);
@@ -115,34 +118,9 @@ public class RobotContainer {
 
     configureBindings();
     configureEndgameAlerts();
+    configureAutoRoutines();
 
     led.breath(new Color(255, 0, 0), 5);
-
-    // set up auto routines
-    autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
-
-    // testing
-    // controllerDriver
-    //     .a()
-    //     .onTrue(
-    // new SequentialCommandGroup(
-    //     new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector),
-    //     new DriveTrajectory(trajectories.get("InitRightToNote"), true, true, drive)
-    //         .alongWith(new IntakeCommand(intake, pivot, shooter))
-    //         .withTimeout(2),
-    //     new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector),
-    //     new DriveTrajectory(trajectories.get("RightToNote1"), false, true, drive)
-    //         .alongWith(new IntakeCommand(intake, pivot, shooter))
-    //         .withTimeout(3)));
-    // new SequentialCommandGroup(
-    //     new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector),
-    //     new DriveTrajectory(trajectories.get("InitCenterToNote"), true, true, drive)
-    //         .alongWith(new IntakeCommand(intake, pivot, shooter))
-    //         .withTimeout(2),
-    //     new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector),
-    //     new DriveTrajectory(trajectories.get("CenterToNote3"), false, true, drive)
-    //         .alongWith(new IntakeCommand(intake, pivot, shooter))
-    //         .withTimeout(3)));
 
     // controllerDriver
     //     .rightBumper()
@@ -152,14 +130,36 @@ public class RobotContainer {
     //             .alongWith(new IntakeCommand(intake, pivot, shooter))
     //             .unless(() -> !noteDetector.hasTrackedNote())
     //             .withName("DriveToNoteAndIntake"));
+  }
 
-    // sysid routines
-    // autoChooser.addOption(
-    //     "Shooter SysId (Quasistatic Forward)",
-    //     shooter.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // autoChooser.addOption(
-    //     "Shooter SysId (Dynamic Forward)",
-    // shooter.sysIdDynamic(SysIdRoutine.Direction.kForward));
+  /**  */
+  private void configureAutoRoutines() {
+    Command ampSideAuto =
+        new SequentialCommandGroup(
+            new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led),
+            new DriveTrajectory(trajectories.get("InitRightToNote"), true, true, drive)
+                .alongWith(new IntakeCommand(intake, pivot, shooter))
+                .withTimeout(2),
+            new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led),
+            new DriveTrajectory(trajectories.get("RightToNote1"), false, true, drive)
+                .alongWith(new IntakeCommand(intake, pivot, shooter))
+                .withTimeout(3));
+    autoChooser.addOption("Amp Side Auto", ampSideAuto);
+
+    Command centerAuto =
+        new SequentialCommandGroup(
+            new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led),
+            new DriveTrajectory(trajectories.get("InitCenterToNote"), true, true, drive)
+                .alongWith(new IntakeCommand(intake, pivot, shooter))
+                .withTimeout(2),
+            new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led),
+            new DriveTrajectory(trajectories.get("CenterToNote3"), false, true, drive)
+                .alongWith(new IntakeCommand(intake, pivot, shooter))
+                .withTimeout(3));
+    autoChooser.addOption("Center Auto", centerAuto);
+
+    Command doNothingAuto = Commands.none();
+    autoChooser.addOption("Do Nothing", doNothingAuto);
   }
 
   /**
@@ -218,7 +218,7 @@ public class RobotContainer {
     controllerDriver
         .b()
         .whileTrue(
-            pivot.moveArmToPosition(50).alongWith(shooter.shoot(3000, () -> pivot.isAtGoal())))
+            pivot.moveArmToPosition(50).alongWith(shooter.manualShoot(() -> pivot.isAtGoal())))
         .onFalse(pivot.moveArmToPosition(20, 2));
 
     // Amp

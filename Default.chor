@@ -551,31 +551,27 @@
                     "scope": [
                         "first"
                     ],
-                    "type": "StopPoint",
-                    "direction": 0
+                    "type": "StopPoint"
                 },
                 {
                     "scope": [
                         "last"
                     ],
-                    "type": "StopPoint",
-                    "direction": 0
+                    "type": "StopPoint"
                 },
                 {
                     "scope": [
                         "first",
                         "last"
                     ],
-                    "type": "ZeroAngularVelocity",
-                    "direction": 0
+                    "type": "ZeroAngularVelocity"
                 },
                 {
                     "scope": [
                         1,
                         2
                     ],
-                    "type": "StraightLine",
-                    "direction": 0
+                    "type": "StraightLine"
                 }
             ],
             "usesControlIntervalGuessing": true,
@@ -887,7 +883,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "EscLeftToNote": {
             "waypoints": [
@@ -2316,7 +2312,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         }
     },
     "splitTrajectoriesAtStopPoints": false,
