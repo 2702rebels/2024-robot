@@ -30,7 +30,7 @@ public class Shooter extends SubsystemBase {
       new LoggedTunableNumber("Shooter/AtSpeedAllowance", 50);
 
   private final LoggedTunableNumber manualSpeed =
-      new LoggedTunableNumber("Shooter.ManualSpeed", 2000);
+      new LoggedTunableNumber("Shooter.ManualSpeed", 3000);
 
   private final SysIdRoutine sysId;
 
