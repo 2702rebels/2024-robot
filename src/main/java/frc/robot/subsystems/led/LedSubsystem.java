@@ -6,7 +6,7 @@ import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.Misc.ColorHSV;
 import java.util.function.BiConsumer;
@@ -140,73 +140,90 @@ public class LedSubsystem extends SubsystemBase {
 
   public Command breathCommand(String state) {
     if (state.equals("amp")) {
-      return Commands.runOnce(
+      return new FunctionalCommand(
               () -> {
                 // System.out.println("Running amp breath command");
                 setPeriodDiscretization(0);
                 breath(new Color(255, 255, 255), 3);
               },
+              () -> {},
+              (interupted) -> {},
+              () -> false,
               this)
           .ignoringDisable(true);
     } else if (state.equals("speaker")) {
-      return Commands.runOnce(
+      return new FunctionalCommand(
               () -> {
                 // System.out.println("Running speaker breath command");
                 setPeriodDiscretization(0);
                 breath(new Color(255, 0, 255), 3);
               },
+              () -> {},
+              (interupted) -> {},
+              () -> false,
               this)
           .ignoringDisable(true);
     } else {
-      return Commands.runOnce(
+      return new FunctionalCommand(
               () -> {
                 // System.out.println("Running static breath command");
                 setPeriodDiscretization(0);
                 breath(new Color(255, 0, 0), 3);
               },
+              () -> {},
+              (interupted) -> {},
+              () -> false,
               this)
           .ignoringDisable(true);
     }
   }
 
   public Command gamePieceFlashCommand() {
-    return Commands.runOnce(
+    return new FunctionalCommand(
             () -> {
               // System.out.println("RUNNING gamePieceFlashCommand");
               setPeriodDiscretization(0);
               flash(new Color(235, 825, 22), 0.25);
-            })
+            },
+            () -> {},
+            (interupted) -> {},
+            () -> false,
+            this)
         .ignoringDisable(true);
   }
 
-  public Command seeingAprilTag() {
-    return Commands.runOnce(
-            () -> {
-              // System.out.println("RUNNING aprilTagDetectLED");
-              setPeriodDiscretization(0);
-              flash(new Color(0, 255, 0), 0.25);
-            })
-        .ignoringDisable(true);
-  }
+  // public Command seeingAprilTag() {
+  //   return Commands.runOnce(
+  //           () -> {
+  //             // System.out.println("RUNNING aprilTagDetectLED");
+  //             setPeriodDiscretization(0);
+  //             flash(new Color(0, 255, 0), 0.25);
+  //           })
+  //       .ignoringDisable(true);
+  // }
 
-  public Command ejectCommand() {
-    return Commands.runOnce(
-            () -> {
-              // System.out.println("RUNNING ejectCommand");
-              setPeriodDiscretization(0);
-              countup(new Color(0, 0, 255), 1.5, 1);
-              // solid(new Color(0, 0, 0), 0.25);
-            })
-        .ignoringDisable(true);
-  }
+  // public Command ejectCommand() {
+  //   return Commands.runOnce(
+  //           () -> {
+  //             // System.out.println("RUNNING ejectCommand");
+  //             setPeriodDiscretization(0);
+  //             countup(new Color(0, 0, 255), 1.5, 1);
+  //             // solid(new Color(0, 0, 0), 0.25);
+  //           })
+  //       .ignoringDisable(true);
+  // }
 
   public Command randomCommand() {
-    return Commands.runOnce(
+    return new FunctionalCommand(
             () -> {
               // System.out.println("RUNNING randomCommand");
               setPeriodDiscretization(10);
               random(new ColorHSV(0, 255, 50), 2.5);
-            })
+            },
+            () -> {},
+            (interupted) -> {},
+            () -> false,
+            this)
         .ignoringDisable(true);
   }
 

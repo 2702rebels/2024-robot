@@ -5,12 +5,11 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.PubSubOption;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 
 public class AprilTagDetector extends SubsystemBase {
-  private static final LoggedTunableNumber timeTolerance =
-      new LoggedTunableNumber("Vision/AprilTag/Time Tolerance", 150);
+  // private static final LoggedTunableNumber timeTolerance =
+  //     new LoggedTunableNumber("Vision/AprilTag/Time Tolerance", 150);
 
   private static final double[] EmptyDoubleArray = new double[] {};
   private final DoubleArraySubscriber subscriber;
@@ -36,7 +35,7 @@ public class AprilTagDetector extends SubsystemBase {
 
   public void periodic() {
     // convert from milliseconds to seconds
-    final var timeToleranceSeconds = timeTolerance.get() / 1e3;
+    // final var timeToleranceSeconds = timeTolerance.get() / 1e3;
 
     final var queue = subscriber.readQueue();
     if (queue.length > 0) {

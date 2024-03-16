@@ -44,7 +44,6 @@ import frc.robot.subsystems.shooter.ShooterIO;
 import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.shooter.ShooterIOSparkMaxes;
 import frc.robot.subsystems.vision.AprilTagDetector;
-import frc.robot.subsystems.vision.NoteDetector;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TrajectoryLoader;
 import java.util.Map;
@@ -54,7 +53,7 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 public class RobotContainer {
   // subsystems
   private final Drive drive;
-  private final NoteDetector noteDetector = new NoteDetector();
+  // private final NoteDetector noteDetector = new NoteDetector();
   private final AprilTagDetector aprilTagDetector = new AprilTagDetector();
   private final Intake intake;
   private final Pivot pivot;
@@ -132,7 +131,7 @@ public class RobotContainer {
     //             .withName("DriveToNoteAndIntake"));
   }
 
-  /**  */
+  /** Sets up our auto chooser and auto objects. */
   private void configureAutoRoutines() {
     Command ampSideAuto =
         new SequentialCommandGroup(
