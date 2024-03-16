@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.BooleanSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -21,6 +22,7 @@ public class Robot extends LoggedRobot {
   private Command autonomousCommand;
   private RobotContainer robotContainer;
   private BooleanSubscriber cameraIsLogging;
+  private BooleanPublisher isLogging;
 
   private static final String logPath = "/U/logs";
 
@@ -31,8 +33,8 @@ public class Robot extends LoggedRobot {
   @Override
   public void robotInit() {
     var ntInstance = NetworkTableInstance.getDefault();
-    var bpIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").publish();
-    bpIsLogging.set(false);
+    isLogging = ntInstance.getBooleanTopic("Vision/isLogging").publish();
+    isLogging.set(false);
     // Pi is logging
     cameraIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").subscribe(false);
 
@@ -113,6 +115,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void autonomousInit() {
     autonomousCommand = robotContainer.getAutonomousCommand();
+    isLogging.set(true);
 
     if (autonomousCommand != null) {
       autonomousCommand.schedule();

@@ -197,7 +197,7 @@ public class LedSubsystem extends SubsystemBase {
             () -> {
               // System.out.println("RUNNING randomCommand");
               setPeriodDiscretization(10);
-              random(new ColorHSV(120, 255, 255), 2.5);
+              random(new ColorHSV(60, 255, 255), 2.5);
             },
             () -> {},
             (interupted) -> {},
