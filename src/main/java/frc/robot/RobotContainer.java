@@ -77,6 +77,7 @@ public class RobotContainer {
 
   private Command loggingCommand;
   private Command idleCommand;
+  private Command seesTagsCommand;
 
   public RobotContainer() {
 
@@ -139,6 +140,9 @@ public class RobotContainer {
 
     idleCommand = led.randomCommand();
     idleCommand.setName("idle");
+
+    seesTagsCommand = led.seesTags();
+    seesTagsCommand.setName("seesTags");
   }
 
   /** Sets up our auto chooser and auto objects. */
@@ -314,6 +318,10 @@ public class RobotContainer {
   public void isLogging(boolean logging) {
     if (logging && led.getCurrentCommand().getName() != "isLogging") {
       CommandScheduler.getInstance().schedule(loggingCommand);
+    } else if (!logging
+        && aprilTagDetector.seesTags()
+        && led.getCurrentCommand().getName() != "seesTags") {
+      CommandScheduler.getInstance().schedule(seesTagsCommand);
     } else if (!logging && led.getCurrentCommand().getName() != "idle") {
       CommandScheduler.getInstance().schedule(idleCommand);
     }

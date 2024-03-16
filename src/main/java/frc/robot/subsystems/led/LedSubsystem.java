@@ -183,7 +183,21 @@ public class LedSubsystem extends SubsystemBase {
             () -> {
               // System.out.println("RUNNING gamePieceFlashCommand");
               setPeriodDiscretization(0);
-              flash(new Color(235, 825, 22), 0.25);
+              flash(new Color(235, 85, 22), 0.25);
+            },
+            () -> {},
+            (interupted) -> {},
+            () -> false,
+            this)
+        .ignoringDisable(true);
+  }
+
+  public Command seesTags() {
+    return new FunctionalCommand(
+            () -> {
+              // System.out.println("RUNNING randomCommand");
+              setPeriodDiscretization(10);
+              random(new ColorHSV(120, 255, 255), 2.5);
             },
             () -> {},
             (interupted) -> {},

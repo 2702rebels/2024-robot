@@ -87,4 +87,8 @@ public class AprilTagDetector extends SubsystemBase {
   public AprilTag getTag(int id) {
     return tags[id - 1];
   }
+
+  public boolean seesTags() {
+    return tags[7 - 1].tracked || tags[4 - 1].tracked || tags[2 - 1].tracked;
+  }
 }
