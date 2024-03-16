@@ -337,7 +337,9 @@ public class RobotContainer {
         && aprilTagDetector.seesTags()
         && led.getCurrentCommand().getName() != "seesTags") {
       CommandScheduler.getInstance().schedule(seesTagsCommand);
-    } else if (!logging && led.getCurrentCommand().getName() != "idle") {
+    } else if (!logging
+        && !aprilTagDetector.seesTags()
+        && led.getCurrentCommand().getName() != "idle") {
       CommandScheduler.getInstance().schedule(idleCommand);
     }
   }
