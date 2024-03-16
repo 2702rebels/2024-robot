@@ -76,6 +76,10 @@ public class RobotContainer {
   private static final LoggedTunableNumber endgameAlert2 =
       new LoggedTunableNumber("Endgame/Alert 2", 10.0);
 
+      private Command loggingCommand;
+      private Command idleCommand;
+
+
   public RobotContainer() {
 
     switch (Constants.currentMode) {
@@ -129,6 +133,12 @@ public class RobotContainer {
     //             .alongWith(new IntakeCommand(intake, pivot, shooter))
     //             .unless(() -> !noteDetector.hasTrackedNote())
     //             .withName("DriveToNoteAndIntake"));
+
+    loggingCommand = led.isLogging();
+    loggingCommand.setName("isLogging");
+
+    idleCommand = led.randomCommand();
+    idleCommand.setName("idle");
   }
 
   /** Sets up our auto chooser and auto objects. */
@@ -299,5 +309,13 @@ public class RobotContainer {
   public void onDisable() {
     CommandScheduler.getInstance().schedule(pivot.disableControlLoop());
     CommandScheduler.getInstance().schedule(led.randomCommand());
+  }
+
+  public void isLogging(boolean logging) {
+    if(logging && led.getCurrentCommand().getName() != "isLogging") {
+        CommandScheduler.getInstance().schedule(loggingCommand);
+    } else if (!logging && led.getCurrentCommand().getName() != "idle") {
+        CommandScheduler.getInstance().schedule(idleCommand);
+    }
   }
 }

@@ -4,6 +4,11 @@
 
 package frc.robot;
 
+import edu.wpi.first.networktables.BooleanSubscriber;
+import edu.wpi.first.networktables.BooleanTopic;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.PubSubOption;
+import edu.wpi.first.networktables.PubSubOptions;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import java.util.HashMap;
@@ -18,6 +23,7 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 public class Robot extends LoggedRobot {
   private Command autonomousCommand;
   private RobotContainer robotContainer;
+  private BooleanSubscriber cameraIsLogging;
 
   private static final String logPath = "/U/logs";
 
@@ -27,6 +33,12 @@ public class Robot extends LoggedRobot {
    */
   @Override
   public void robotInit() {
+    var ntInstance = NetworkTableInstance.getDefault();
+    var bpIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").publish();
+    bpIsLogging.set(false);
+    // Pi is logging
+    var cameraIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").subscribe(false);
+
     // record metadata
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
     Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
@@ -87,10 +99,17 @@ public class Robot extends LoggedRobot {
   @Override
   public void disabledInit() {
     robotContainer.onDisable();
+
   }
 
   @Override
-  public void disabledPeriodic() {}
+  public void disabledPeriodic() {
+    if(cameraIsLogging.get()) {
+      robotContainer.isLogging(true);
+    } else {
+      robotContainer.isLogging(false);
+    }
+  }
 
   @Override
   public void disabledExit() {}

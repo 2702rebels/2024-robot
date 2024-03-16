@@ -192,6 +192,20 @@ public class LedSubsystem extends SubsystemBase {
         .ignoringDisable(true);
   }
 
+    public Command isLogging() {
+    return new FunctionalCommand(
+            () -> {
+              // System.out.println("RUNNING gamePieceFlashCommand");
+              setPeriodDiscretization(0);
+              flash(new Color(255, 0, 255), 0.25);
+            },
+            () -> {},
+            (interupted) -> {},
+            () -> false,
+            this)
+        .ignoringDisable(true);
+  }
+
   // public Command seeingAprilTag() {
   //   return Commands.runOnce(
   //           () -> {
