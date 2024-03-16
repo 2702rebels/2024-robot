@@ -19,11 +19,11 @@ public class Climb extends SubsystemBase {
   private final LoggedTunableNumber ratchetOnAngle =
       new LoggedTunableNumber("Climb/ratchetOnAngle", 0);
   private final LoggedTunableNumber ratchetOffAngle =
-      new LoggedTunableNumber("Climb/ratchetOffAngle", 45);
+      new LoggedTunableNumber("Climb/ratchetOffAngle", 80);
   private final LoggedTunableNumber hookTopPosition =
       new LoggedTunableNumber("Climb/hookTopPosition", 55);
   private final LoggedTunableNumber homeSpeed = new LoggedTunableNumber("Climb/homeSpeed", -0.2);
-  private final LoggedTunableNumber kp = new LoggedTunableNumber("Climb/PID/P", 0.01);
+  private final LoggedTunableNumber kp = new LoggedTunableNumber("Climb/PID/P", 0.1);
   private final LoggedTunableNumber ki = new LoggedTunableNumber("Climb/PID/I", 0.0);
   private final LoggedTunableNumber kd = new LoggedTunableNumber("Climb/PID/D", 0.0);
 
@@ -90,6 +90,7 @@ public class Climb extends SubsystemBase {
             // Turn on climb motor at command start
             () -> {
               // Go to home position
+              subsystemio.configurePID(kp.get(), ki.get(), kd.get());
               subsystemio.setServoPosition(ratchetOnAngle.get()); // engage ratchet
               subsystemio.setPosition(20);
             },
@@ -111,6 +112,7 @@ public class Climb extends SubsystemBase {
         // Reverse climb motor at command start
         () -> {
           // Go to top position
+          subsystemio.configurePID(kp.get() / 4, ki.get(), kd.get());
           subsystemio.setServoPosition(ratchetOffAngle.get()); // release ratchet
           subsystemio.setPosition(hookTopPosition.get());
         },
