@@ -82,7 +82,11 @@ public class ScoreInSpeaker extends Command {
       if (DriverStation.isAutonomous()) {
         final var speeds =
             ChassisSpeeds.fromFieldRelativeSpeeds(
-                0, 0, drive.getOrientationLockRotation(), drive.getRotation());
+                0,
+                0,
+                drive.getOrientationLockRotation() * drive.getMaxAngularSpeedRadPerSec(),
+                drive.getRotation());
+
         drive.runVelocity(speeds);
       }
 

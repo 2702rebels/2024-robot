@@ -1,7 +1,6 @@
 package frc.robot;
 
 import com.choreo.lib.ChoreoTrajectory;
-import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -129,7 +128,7 @@ public class RobotContainer {
     configureBindings();
     configureEndgameAlerts();
 
-    autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+    autoChooser = new LoggedDashboardChooser<>("Auto Choices");
     configureAutoRoutines();
 
     led.breath(new Color(255, 0, 0), 5);
