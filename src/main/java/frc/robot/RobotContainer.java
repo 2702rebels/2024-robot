@@ -261,8 +261,8 @@ public class RobotContainer {
         .rightBumper()
         .onTrue(
             Commands.either(
-                Commands.runOnce(() -> drive.toggleOrientationLock(-45)),
-                Commands.runOnce(() -> drive.toggleOrientationLock(45)),
+                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(-45))),
+                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(45))),
                 () -> DriverStation.getAlliance().get() == Alliance.Blue));
 
     // Intake
