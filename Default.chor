@@ -315,7 +315,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "InitCenterToNote": {
             "waypoints": [
@@ -326,20 +326,20 @@
                     "isInitialGuess": false,
                     "translationConstrained": true,
                     "headingConstrained": true,
-                    "controlIntervalCount": 8
-                },
-                {
-                    "x": 2.0446364879608154,
-                    "y": 5.556,
-                    "heading": 0,
-                    "isInitialGuess": false,
-                    "translationConstrained": true,
-                    "headingConstrained": false,
                     "controlIntervalCount": 9
                 },
                 {
-                    "x": 2.8892393112182617,
-                    "y": 5.556,
+                    "x": 2.217888355255127,
+                    "y": 5.529188632965088,
+                    "heading": 0,
+                    "isInitialGuess": true,
+                    "translationConstrained": true,
+                    "headingConstrained": true,
+                    "controlIntervalCount": 9
+                },
+                {
+                    "x": 3.105803966522217,
+                    "y": 5.5725016593933105,
                     "heading": 0,
                     "isInitialGuess": false,
                     "translationConstrained": true,
@@ -579,7 +579,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "InitAmpToNote": {
             "waypoints": [
@@ -883,7 +883,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "StageToNote5": {
             "waypoints": [
@@ -1580,7 +1580,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "CenterToNote3": {
             "waypoints": [
@@ -2084,7 +2084,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "AmpToNote1": {
             "waypoints": [
@@ -2469,7 +2469,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "AmpToNote2": {
             "waypoints": [
@@ -2919,7 +2919,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "CenterToNote1": {
             "waypoints": [
@@ -3488,7 +3488,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "CenterToNote4": {
             "waypoints": [
@@ -4084,7 +4084,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         },
         "CenterToNote2": {
             "waypoints": [
@@ -4772,7 +4772,7 @@
             "usesDefaultFieldObstacles": true,
             "circleObstacles": [],
             "eventMarkers": [],
-            "isTrajectoryStale": false
+            "isTrajectoryStale": true
         }
     },
     "splitTrajectoriesAtStopPoints": false,

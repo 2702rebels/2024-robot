@@ -221,6 +221,8 @@ public class RobotContainer {
             scoreInSpeaker(),
             driveAndIntake("StageToNote5", 3)));
 
+    autoChooser.addOption("Just Shoot", Commands.sequence(scoreInSpeaker()));
+
     autoChooser.addOption("Do Nothing", Commands.none());
   }
 
