@@ -169,7 +169,7 @@ public class RobotContainer {
         "Amp Auto 1",
         Commands.sequence(
             scoreInSpeaker(),
-            driveAndIntake("InitAmpNote", 2),
+            driveAndIntake("InitAmpToNote", 2),
             scoreInSpeaker(),
             driveAndIntake("AmpToNote1", 3)));
 
@@ -177,7 +177,7 @@ public class RobotContainer {
         "Amp Auto 2",
         Commands.sequence(
             scoreInSpeaker(),
-            driveAndIntake("InitAmpNote", 2),
+            driveAndIntake("InitAmpToNote", 2),
             scoreInSpeaker(),
             driveAndIntake("AmpToNote2", 3)));
 
