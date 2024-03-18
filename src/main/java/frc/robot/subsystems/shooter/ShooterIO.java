@@ -1,12 +1,7 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.subsystems.shooter;
 
 import org.littletonrobotics.junction.AutoLog;
 
-/** Add your docs here. */
 public interface ShooterIO {
   @AutoLog
   public static class ShooterIOInputs {
@@ -47,6 +42,7 @@ public interface ShooterIO {
   /** Sets the target speed for the feed PID. */
   public default void setFeedSpeed(double rpm) {}
 
+  /** Sets the target output for the feed motor. */
   public default void setFeedPercentOutput(double percent) {}
 
   /** Enables or Disables brake mode on the feed. */

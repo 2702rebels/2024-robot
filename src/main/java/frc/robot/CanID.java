@@ -1,5 +1,6 @@
 package frc.robot;
 
+/** CAN bus identifiers */
 public final class CanID {
   public static final int GYRO_CONTROLLER = 10;
 

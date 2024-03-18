@@ -16,22 +16,20 @@ public class Module {
   private final SwerveModuleState moduleState;
   private final SwerveModulePosition modulePosition;
 
-  private static final LoggedTunableNumber driveP = new LoggedTunableNumber("Drive/Module/Drive P");
-  private static final LoggedTunableNumber driveI = new LoggedTunableNumber("Drive/Module/Drive I");
-  private static final LoggedTunableNumber driveD = new LoggedTunableNumber("Drive/Module/Drive D");
-  private static final LoggedTunableNumber driveFF =
-      new LoggedTunableNumber("Drive/Module/Drive FF");
-  private static final LoggedTunableNumber driveS =
-      new LoggedTunableNumber("Drive/Module/Drive kS");
-  private static final LoggedTunableNumber driveV =
-      new LoggedTunableNumber("Drive/Module/Drive kV");
-  private static final LoggedTunableNumber driveA =
-      new LoggedTunableNumber("Drive/Module/Drive kA");
+  // spotless:off
+  private static final LoggedTunableNumber driveP  = new LoggedTunableNumber("Drive/Module/Drive P");
+  private static final LoggedTunableNumber driveI  = new LoggedTunableNumber("Drive/Module/Drive I");
+  private static final LoggedTunableNumber driveD  = new LoggedTunableNumber("Drive/Module/Drive D");
+  private static final LoggedTunableNumber driveFF = new LoggedTunableNumber("Drive/Module/Drive FF");
+  private static final LoggedTunableNumber driveS  = new LoggedTunableNumber("Drive/Module/Drive kS");
+  private static final LoggedTunableNumber driveV  = new LoggedTunableNumber("Drive/Module/Drive kV");
+  private static final LoggedTunableNumber driveA  = new LoggedTunableNumber("Drive/Module/Drive kA");
 
-  private static final LoggedTunableNumber turnP = new LoggedTunableNumber("Drive/Module/Turn P");
-  private static final LoggedTunableNumber turnI = new LoggedTunableNumber("Drive/Module/Turn I");
-  private static final LoggedTunableNumber turnD = new LoggedTunableNumber("Drive/Module/Turn D");
-  private static final LoggedTunableNumber turnFF = new LoggedTunableNumber("Drive/Module/Turn FF");
+  private static final LoggedTunableNumber turnP   = new LoggedTunableNumber("Drive/Module/Turn P");
+  private static final LoggedTunableNumber turnI   = new LoggedTunableNumber("Drive/Module/Turn I");
+  private static final LoggedTunableNumber turnD   = new LoggedTunableNumber("Drive/Module/Turn D");
+  private static final LoggedTunableNumber turnFF  = new LoggedTunableNumber("Drive/Module/Turn FF");
+  // spotless:on
 
   static {
     driveP.initDefault(DriveConstants.moduleFactors.driveMotor().kP());

@@ -11,10 +11,10 @@ import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.AutoLogOutput;
 
 public class NoteDetector extends SubsystemBase {
-  private static final LoggedTunableNumber detectionProbabilityCutoff =
-      new LoggedTunableNumber("Vision/NoteDetector/Cutoff P", 0.7);
-  private static final LoggedTunableNumber detectionTimeCutoff =
-      new LoggedTunableNumber("Vision/NoteDetector/Cutoff T", 1);
+  // spotless:off
+  private static final LoggedTunableNumber detectionProbabilityCutoff = new LoggedTunableNumber("Vision/NoteDetector/Cutoff P", 0.7);
+  private static final LoggedTunableNumber detectionTimeCutoff = new LoggedTunableNumber("Vision/NoteDetector/Cutoff T", 1);
+  // spotless:on
 
   private static final double[] EmptyDoubleArray = new double[] {};
   private final DoubleArraySubscriber subscriber;

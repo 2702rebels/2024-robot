@@ -26,9 +26,9 @@ public class RobotState {
   private final TimeInterpolatableBuffer<Pose2d> poseBuffer =
       TimeInterpolatableBuffer.createBuffer(poseBufferSizeSeconds);
 
-  // fudge factor to multiple the maximum velocity and omega by
+  // fudge factor to multiple the maximum velocity and omega by,
   // when checking whether currently estimated deltas are outside
-  // of reasonable range resulting in observation being dropped
+  // of reasonable range, resulting in observation being dropped
   private static final double deltaOverflowFactor = 3;
   private final double maxAcceptableVelocityMetersPerSecond;
   private final double maxAcceptableOmegaRadiansPerSecond;

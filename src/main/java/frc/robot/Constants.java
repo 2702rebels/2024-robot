@@ -26,15 +26,4 @@ public final class Constants {
 
   /** Odometry frequency (Hz) */
   public static final int odometryFrequency = 200;
-
-  public static final int CLIMB_SERVO = 2;
-
-  /** Digital IO port the climb limit switch is plugged into. */
-  public static final int CLIMB_LIMITSWITCH = 5;
-
-  /** Digital IO port the beambreak is plugged into. */
-  public static final int SHOOTER_BEAMBREAKFRONT = 8;
-
-  public static final int SHOOTER_BEAMBREAKBACK = 7;
-  public static final int SHOOTER_BEAMBREAKINTAKE = 6;
 }

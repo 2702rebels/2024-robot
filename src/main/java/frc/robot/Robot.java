@@ -35,6 +35,7 @@ public class Robot extends LoggedRobot {
     var ntInstance = NetworkTableInstance.getDefault();
     isLogging = ntInstance.getBooleanTopic("Vision/isLogging").publish();
     isLogging.set(false);
+
     // Pi is logging
     cameraIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").subscribe(false);
 
@@ -103,9 +104,9 @@ public class Robot extends LoggedRobot {
   @Override
   public void disabledPeriodic() {
     if (cameraIsLogging.get()) {
-      robotContainer.isLogging(true);
+      robotContainer.setLoggingIndicator(true);
     } else {
-      robotContainer.isLogging(false);
+      robotContainer.setLoggingIndicator(false);
     }
   }
 

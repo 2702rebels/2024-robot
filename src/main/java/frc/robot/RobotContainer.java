@@ -4,22 +4,20 @@ import com.choreo.lib.ChoreoTrajectory;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.util.Color;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import frc.robot.commands.DriveCommands;
+import frc.robot.commands.CommandsFactory;
+import frc.robot.commands.CommandsFactory.LedMode;
 import frc.robot.commands.DriveTrajectory;
-import frc.robot.commands.IntakeCommand;
-import frc.robot.commands.ScoreInSpeaker;
 import frc.robot.subsystems.climb.Climb;
 import frc.robot.subsystems.climb.ClimbIO;
 import frc.robot.subsystems.climb.ClimbIOSim;
@@ -35,8 +33,8 @@ import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
 import frc.robot.subsystems.intake.IntakeIOSim;
 import frc.robot.subsystems.intake.IntakeIOSparkMax;
+import frc.robot.subsystems.led.Led;
 import frc.robot.subsystems.led.LedConstants;
-import frc.robot.subsystems.led.LedSubsystem;
 import frc.robot.subsystems.pivot.Pivot;
 import frc.robot.subsystems.pivot.PivotIO;
 import frc.robot.subsystems.pivot.PivotIOSim;
@@ -44,8 +42,9 @@ import frc.robot.subsystems.pivot.PivotIOSparkMax;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.shooter.ShooterIO;
 import frc.robot.subsystems.shooter.ShooterIOSim;
-import frc.robot.subsystems.shooter.ShooterIOSparkMaxes;
+import frc.robot.subsystems.shooter.ShooterIOSparkMax;
 import frc.robot.subsystems.vision.AprilTagDetector;
+import frc.robot.subsystems.vision.NoteDetector;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TrajectoryLoader;
 import java.util.Map;
@@ -55,13 +54,16 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 public class RobotContainer {
   // subsystems
   private final Drive drive;
-  // private final NoteDetector noteDetector = new NoteDetector();
+  private final NoteDetector noteDetector = new NoteDetector();
   private final AprilTagDetector aprilTagDetector = new AprilTagDetector();
   private final Intake intake;
   private final Pivot pivot;
   private final Shooter shooter;
-  private final LedSubsystem led = new LedSubsystem(LedConstants.LENGTH, LedConstants.PWM_PORT);
+  private final Led led = new Led(LedConstants.LENGTH, LedConstants.PWM_PORT);
   private final Climb climb;
+
+  // factory for common commands
+  private final CommandsFactory commands;
 
   // loaded choreo trajectories
   private final Map<String, ChoreoTrajectory> trajectories;
@@ -70,20 +72,23 @@ public class RobotContainer {
   private final CommandXboxController controllerDriver = new CommandXboxController(0);
 
   // dashboard inputs
-  private final LoggedDashboardChooser<Command> autoChooser;
+  private final LoggedDashboardChooser<Command> autoChooser =
+      new LoggedDashboardChooser<>("Auto Choices");
 
-  private static final LoggedTunableNumber endgameAlert1 =
-      new LoggedTunableNumber("Endgame/Alert 1", 30.0);
+  // spotless:off
+  private static final LoggedTunableNumber endgameAlert1 = new LoggedTunableNumber("Endgame/Alert 1", 30.0);
+  private static final LoggedTunableNumber endgameAlert2 = new LoggedTunableNumber("Endgame/Alert 2", 10.0);
 
-  private static final LoggedTunableNumber endgameAlert2 =
-      new LoggedTunableNumber("Endgame/Alert 2", 10.0);
+  private static final LoggedTunableNumber shooterSubwooferSpeed = new LoggedTunableNumber("Shooter/Subwoofer Speed", 3000);
+  // spotless:on
 
-  private Command loggingCommand;
-  private Command idleCommand;
-  private Command seesTagsCommand;
+  // pre-created command instances to be scheduled manually
+  // when the robot is in the disabled state
+  private Command commandLedLogging;
+  private Command commandLedDisabled;
+  private Command commandLedTrackingTags;
 
   public RobotContainer() {
-
     switch (Constants.currentMode) {
       case REAL:
         // real robot, instantiate hardware IO implementations
@@ -97,8 +102,8 @@ public class RobotContainer {
                         DriveConstants.drivetrainConfig));
 
         intake = new Intake(new IntakeIOSparkMax());
-        pivot = new Pivot(new PivotIOSparkMax(CanID.MOTOR_PIVOT));
-        shooter = new Shooter(new ShooterIOSparkMaxes());
+        pivot = new Pivot(new PivotIOSparkMax());
+        shooter = new Shooter(new ShooterIOSparkMax());
         climb = new Climb(new ClimbIOSparkMax());
         break;
 
@@ -124,105 +129,48 @@ public class RobotContainer {
     // load trajectories from the file system
     trajectories = TrajectoryLoader.loadChoreoTrajectories();
 
+    // commands factory (must come before bindings, etc.)
+    commands =
+        new CommandsFactory(
+            drive, led, intake, pivot, shooter, climb, aprilTagDetector, noteDetector);
+
+    commandLedDisabled = commands.led(LedMode.DISABLED);
+    commandLedLogging = commands.led(LedMode.LOGGING);
+    commandLedTrackingTags = commands.led(LedMode.TRACKING_TAGS);
+
     configureBindings();
-    configureEndgameAlerts();
-
-    autoChooser = new LoggedDashboardChooser<>("Auto Choices");
+    configureTriggers();
     configureAutoRoutines();
-
-    led.breath(new Color(255, 0, 0), 5);
-
-    // controllerDriver
-    //     .rightBumper()
-    //     .whileTrue(
-    //         new DriveToNote(drive, noteDetector, false)
-    //             .until(() -> !noteDetector.hasTrackedNote())
-    //             .alongWith(new IntakeCommand(intake, pivot, shooter))
-    //             .unless(() -> !noteDetector.hasTrackedNote())
-    //             .withName("DriveToNoteAndIntake"));
-
-    loggingCommand = led.isLogging();
-    loggingCommand.setName("isLogging");
-
-    idleCommand = led.randomCommand();
-    idleCommand.setName("idle");
-
-    seesTagsCommand = led.seesTags();
-    seesTagsCommand.setName("seesTags");
+    configureSmartDashboard();
   }
 
   /** Creates new command that drives specified trajectory with intake running. */
   private Command driveAndIntake(String trajectoryName, double timeoutSeconds) {
     return new DriveTrajectory(trajectories.get(trajectoryName), true, true, drive)
-        .alongWith(new IntakeCommand(intake, pivot, shooter))
+        .alongWith(commands.intake())
         .withTimeout(timeoutSeconds);
   }
 
-  /** Creates new command that scores in speaker. */
-  private Command scoreInSpeaker() {
-    return new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led);
+  /** Creates new command sequence for a default auto with specific trajectories. */
+  private Command defaultAuto(String trajectory1, String trajectory2) {
+    return Commands.sequence(
+        commands.scoreInSpeaker(),
+        driveAndIntake(trajectory1, 2),
+        commands.scoreInSpeaker(),
+        driveAndIntake(trajectory2, 3));
   }
 
   /** Sets up our auto chooser and auto objects. */
   private void configureAutoRoutines() {
-    autoChooser.addOption(
-        "Amp Auto 1",
-        Commands.sequence(
-            scoreInSpeaker(),
-            driveAndIntake("InitAmpToNote", 2),
-            scoreInSpeaker(),
-            driveAndIntake("AmpToNote1", 3)));
+    autoChooser.addOption("Amp Auto 1", defaultAuto("InitAmpToNote", "AmpToNote1"));
+    autoChooser.addOption("Amp Auto 2", defaultAuto("InitAmpToNote", "AmpToNote2"));
+    autoChooser.addOption("Center Auto 1", defaultAuto("InitCenterToNote", "CenterToNote1"));
+    autoChooser.addOption("Center Auto 2", defaultAuto("InitCenterToNote", "CenterToNote2"));
+    autoChooser.addOption("Center Auto 3", defaultAuto("InitCenterToNote", "CenterToNote3"));
+    autoChooser.addOption("Center Auto 4", defaultAuto("InitCenterToNote", "CenterToNote4"));
+    autoChooser.addOption("Load Auto 5", defaultAuto("InitLoadToNote", "StageToNote5"));
 
-    autoChooser.addOption(
-        "Amp Auto 2",
-        Commands.sequence(
-            scoreInSpeaker(),
-            driveAndIntake("InitAmpToNote", 2),
-            scoreInSpeaker(),
-            driveAndIntake("AmpToNote2", 3)));
-
-    autoChooser.addOption(
-        "Center Auto 1",
-        Commands.sequence(
-            scoreInSpeaker(),
-            driveAndIntake("InitCenterToNote", 2),
-            scoreInSpeaker(),
-            driveAndIntake("CenterToNote1", 3)));
-
-    autoChooser.addOption(
-        "Center Auto 2",
-        Commands.sequence(
-            scoreInSpeaker(),
-            driveAndIntake("InitCenterToNote", 2),
-            scoreInSpeaker(),
-            driveAndIntake("CenterToNote2", 3)));
-
-    autoChooser.addOption(
-        "Center Auto 3",
-        Commands.sequence(
-            scoreInSpeaker(),
-            driveAndIntake("InitCenterToNote", 2),
-            scoreInSpeaker(),
-            driveAndIntake("CenterToNote3", 3)));
-
-    autoChooser.addOption(
-        "Center Auto 4",
-        Commands.sequence(
-            scoreInSpeaker(),
-            driveAndIntake("InitCenterToNote", 2),
-            scoreInSpeaker(),
-            driveAndIntake("CenterToNote4", 3)));
-
-    autoChooser.addOption(
-        "Load Auto 5",
-        Commands.sequence(
-            scoreInSpeaker(),
-            driveAndIntake("InitLoadToNote", 2),
-            scoreInSpeaker(),
-            driveAndIntake("StageToNote5", 3)));
-
-    autoChooser.addOption("Just Shoot", Commands.sequence(scoreInSpeaker()));
-
+    autoChooser.addOption("Just Shoot", commands.scoreInSpeaker());
     autoChooser.addOption("Do Nothing", Commands.none());
   }
 
@@ -234,11 +182,12 @@ public class RobotContainer {
    */
   private void configureBindings() {
     drive.setDefaultCommand(
-        DriveCommands.joystickDrive(
-            drive,
+        commands.driveTeleop(
             () -> -controllerDriver.getLeftX(),
             () -> -controllerDriver.getLeftY(),
             () -> -controllerDriver.getRightX()));
+
+    led.setDefaultCommand(commands.led(LedMode.DEFAULT));
 
     controllerDriver.x().whileTrue(Commands.run(drive::stopWithX));
     controllerDriver
@@ -251,91 +200,88 @@ public class RobotContainer {
                     })
                 .ignoringDisable(true));
 
-    // Orientation locks (Red Alliance)
+    // orientation locks
     controllerDriver
         .leftBumper()
         .onTrue(
             Commands.either(
-                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(90))),
-                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(-90))),
+                Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(90))),
+                Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(-90))),
                 () -> DriverStation.getAlliance().get() == Alliance.Blue));
+
     controllerDriver
         .rightBumper()
         .onTrue(
             Commands.either(
-                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(-45))),
-                Commands.runOnce(() -> drive.toggleOrientationLock(Units.degreesToRadians(45))),
+                Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(-45))),
+                Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(45))),
                 () -> DriverStation.getAlliance().get() == Alliance.Blue));
 
-    // Intake
-    controllerDriver.leftTrigger().whileTrue(new IntakeCommand(intake, pivot, shooter));
+    // intake
+    controllerDriver.leftTrigger().whileTrue(commands.intake());
 
-    // Outtake
-    controllerDriver.y().whileTrue(intake.outake());
+    // eject
+    controllerDriver.y().whileTrue(commands.eject());
 
-    // Speaker shot
-    controllerDriver
-        .rightTrigger()
-        .whileTrue(new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led));
+    // speaker shot
+    controllerDriver.rightTrigger().whileTrue(commands.scoreInSpeaker());
 
-    // Subwoofer shot
+    // subwoofer shot
     controllerDriver
         .b()
         .whileTrue(
-            pivot.moveArmToPosition(50).alongWith(shooter.manualShoot(() -> pivot.isAtGoal())))
-        .onFalse(pivot.moveArmToPosition(20, 2));
+            commands
+                .moveArmToPosition(50)
+                .alongWith(commands.shoot(shooterSubwooferSpeed.get(), pivot::isAtGoal)))
+        .onFalse(commands.moveArmToPosition(20, 2));
 
-    // Amp
+    // amp shot
     controllerDriver
         .a()
         .onTrue(
             Commands.parallel(
-                    pivot.moveArmToPosition(107, 5),
-                    shooter
-                        .shoot(
-                            900,
-                            () -> {
-                              return pivot.isAtGoal();
-                            })
-                        .until(() -> !shooter.hasGamePiece()))
-                .andThen(pivot.moveArmToPosition(20, 3))
-                .deadlineWith(led.breathCommand("Amp")));
+                    commands.moveArmToPosition(107, 5),
+                    commands.shoot(900, pivot::isAtGoal).until(() -> !shooter.hasGamePiece()))
+                .andThen(commands.moveArmToPosition(20, 3))
+                .deadlineWith(commands.led(LedMode.AMP)));
 
-    // Move to idle
+    // move to idle
     controllerDriver
         .povDown()
         .onTrue(
             Commands.parallel(
-                pivot.moveArmToPosition(20), Commands.runOnce(() -> shooter.stop(), shooter)));
+                commands.moveArmToPosition(20), Commands.runOnce(shooter::stop, shooter)));
 
-    led.setDefaultCommand(led.breathCommand(""));
+    controllerDriver.povLeft().whileTrue(commands.reindex().withTimeout(2));
 
-    new Trigger(() -> shooter.hasGamePiece()).onTrue(led.gamePieceFlashCommand().withTimeout(1.5));
+    // climb commands
+    controllerDriver.povUp().onTrue(commands.homeHooks().andThen(commands.raiseHooks()));
+    controllerDriver.back().onTrue(commands.retractHooks());
+  }
 
-    controllerDriver.povLeft().whileTrue(shooter.reindex().withTimeout(2));
-
-    controllerDriver.povUp().onTrue(climb.homeHooks(false).andThen(climb.raiseHooks()));
-
-    controllerDriver.back().onTrue(climb.retractHooks());
+  /** Use this method to put commands on the SmartDashboard. */
+  private void configureSmartDashboard() {
+    SmartDashboard.putData("Climb/Home", commands.homeHooks());
+    SmartDashboard.putData("Climb/Release Ratchet", commands.releaseRatchet());
+    SmartDashboard.putData("Climb/Engage Ratchet", commands.engageRatchet());
   }
 
   /**
    * Use this method to configure haptic feedback to the driver / operator when certain game
    * milestones have been reached, e.g. end game.
    */
-  private void configureEndgameAlerts() {
+  private void configureTriggers() {
     Function<Double, Command> controllerRumbleCommandFactory =
         time ->
             Commands.sequence(
                 Commands.runOnce(
-                    () -> {
-                      controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 1.0);
-                    }),
+                    () -> controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 1.0)),
                 Commands.waitSeconds(time),
                 Commands.runOnce(
-                    () -> {
-                      controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0);
-                    }));
+                    () -> controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0)));
+
+    new Trigger(() -> shooter.hasGamePiece())
+        .onTrue(commands.led(LedMode.ACQUIRED_NOTE).withTimeout(1.5));
 
     new Trigger(() -> intake.isIntaking() && shooter.isFrontBeamTripped())
         .onTrue(controllerRumbleCommandFactory.apply(0.3));
@@ -366,21 +312,17 @@ public class RobotContainer {
   }
 
   public void onDisable() {
-    CommandScheduler.getInstance().schedule(pivot.disableControlLoop());
-    CommandScheduler.getInstance().schedule(led.randomCommand());
+    CommandScheduler.getInstance().schedule(commands.disablePivot());
+    CommandScheduler.getInstance().schedule(commandLedDisabled);
   }
 
-  public void isLogging(boolean logging) {
-    if (logging && led.getCurrentCommand().getName() != "isLogging") {
-      CommandScheduler.getInstance().schedule(loggingCommand);
-    } else if (!logging
-        && aprilTagDetector.seesTags()
-        && led.getCurrentCommand().getName() != "seesTags") {
-      CommandScheduler.getInstance().schedule(seesTagsCommand);
-    } else if (!logging
-        && !aprilTagDetector.seesTags()
-        && led.getCurrentCommand().getName() != "idle") {
-      CommandScheduler.getInstance().schedule(idleCommand);
+  public void setLoggingIndicator(boolean logging) {
+    if (logging) {
+      CommandScheduler.getInstance().schedule(commandLedLogging);
+    } else if (aprilTagDetector.areTagsTracked(7, 4, 2)) {
+      CommandScheduler.getInstance().schedule(commandLedTrackingTags);
+    } else {
+      CommandScheduler.getInstance().schedule(commandLedDisabled);
     }
   }
 }

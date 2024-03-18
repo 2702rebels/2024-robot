@@ -8,9 +8,6 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import org.littletonrobotics.junction.Logger;
 
 public class AprilTagDetector extends SubsystemBase {
-  // private static final LoggedTunableNumber timeTolerance =
-  //     new LoggedTunableNumber("Vision/AprilTag/Time Tolerance", 150);
-
   private static final double[] EmptyDoubleArray = new double[] {};
   private final DoubleArraySubscriber subscriber;
 
@@ -34,9 +31,6 @@ public class AprilTagDetector extends SubsystemBase {
   }
 
   public void periodic() {
-    // convert from milliseconds to seconds
-    // final var timeToleranceSeconds = timeTolerance.get() / 1e3;
-
     final var queue = subscriber.readQueue();
     if (queue.length > 0) {
       for (var i = 0; i < queue.length; ++i) {
@@ -54,13 +48,6 @@ public class AprilTagDetector extends SubsystemBase {
 
           final var x = frame[offset];
           if (Math.abs(x) > cutoff) {
-            // if the tag disappears keep the last known position for
-            // the 'tolerance' window to avoid jitterring when the tag
-            // come in and out of view
-            // if (timestamp - tags[j].timestamp < timeToleranceSeconds) {
-            //   continue;
-            // }
-
             // keep the last known vector but set tracked to false
             tags[j].tracked = false;
             tags[j].timestamp = timestamp;
@@ -84,11 +71,22 @@ public class AprilTagDetector extends SubsystemBase {
     }
   }
 
+  /**
+   * Gets the tag with the specified identifier.
+   *
+   * @param id field-specific identifier (one-based)
+   */
   public AprilTag getTag(int id) {
     return tags[id - 1];
   }
 
-  public boolean seesTags() {
-    return tags[7 - 1].tracked || tags[4 - 1].tracked || tags[2 - 1].tracked;
+  /** Determines whether tags of interest are tracked. */
+  public boolean areTagsTracked(int... tagIds) {
+    for (var id : tagIds) {
+      if (tags[id - 1].tracked) {
+        return true;
+      }
+    }
+    return false;
   }
 }
