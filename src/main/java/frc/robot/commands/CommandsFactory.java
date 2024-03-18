@@ -15,7 +15,7 @@ import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.vision.AprilTagDetector;
 import frc.robot.subsystems.vision.NoteDetector;
 import frc.robot.util.DefaultCommand;
-import frc.robot.util.Misc.ColorHSV;
+import frc.robot.util.Misc;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
@@ -68,15 +68,15 @@ public class CommandsFactory {
   private Runnable createLedFunction(LedMode mode) {
     switch (mode) {
       case DISABLED:
-        return () -> led.random(new ColorHSV(0, 255, 50), 2.5, 10);
+        return () -> led.random(Misc.toHSV(Color.kRed), 2.5, 10);
       case LOGGING:
         return () -> led.flash(Color.kMagenta, 0.25);
       case AMP:
         return () -> led.breath(Color.kWhite, 3);
       case ACQUIRED_NOTE:
-        return () -> led.flash(new Color(235, 85, 22), 0.25);
+        return () -> led.flash(Color.kOrange, 0.25);
       case TRACKING_TAGS:
-        return () -> led.random(new ColorHSV(60, 255, 255), 2.5, 10);
+        return () -> led.random(Misc.toHSV(Color.kGreen), 2.5, 10);
       default:
         return () -> led.breath(Color.kRed, 3);
     }
