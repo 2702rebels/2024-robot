@@ -1,5 +1,6 @@
 package frc.robot.commands;
 
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -8,6 +9,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.StartEndCommand;
 import frc.robot.subsystems.climb.Climb;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.led.Led;
 import frc.robot.subsystems.pivot.Pivot;
@@ -16,6 +18,7 @@ import frc.robot.subsystems.vision.AprilTagDetector;
 import frc.robot.subsystems.vision.NoteDetector;
 import frc.robot.util.DefaultCommand;
 import frc.robot.util.Misc;
+import java.util.Arrays;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
@@ -29,6 +32,11 @@ public class CommandsFactory {
   private final Climb climb;
   private final AprilTagDetector aprilTagDetector;
   private final NoteDetector noteDetector;
+
+  public static final Rotation2d[] circleOrientations =
+      Arrays.stream(DriveConstants.moduleTranslations)
+          .map(translation -> translation.getAngle().plus(new Rotation2d(Math.PI / 2.0)))
+          .toArray(Rotation2d[]::new);
 
   public CommandsFactory(
       Drive drive,
@@ -228,5 +236,14 @@ public class CommandsFactory {
   /** Commands climb ratchet to release. */
   public Command releaseRatchet() {
     return new InstantCommand(climb::releaseRatchet, climb);
+  }
+
+  /** Commands wheel diameter characterization routine. */
+  public Command wheelDiameterCharacterization() {
+    return drive
+        .orientModules(circleOrientations)
+        .withTimeout(2)
+        .andThen(new WheelDiameterCharacterization(drive, 1))
+        .withName("WheelDiameterCharacterization");
   }
 }

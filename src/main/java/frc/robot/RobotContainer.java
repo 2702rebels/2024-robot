@@ -170,6 +170,12 @@ public class RobotContainer {
     autoChooser.addOption("Center Auto 4", defaultAuto("InitCenterToNote", "CenterToNote4"));
     autoChooser.addOption("Load Auto 5", defaultAuto("InitLoadToNote", "StageToNote5"));
 
+    autoChooser.addOption(
+        "Wheel Diameter Characterization", commands.wheelDiameterCharacterization());
+
+    trajectories.forEach(
+        (k, v) -> autoChooser.addOption("Path " + k, new DriveTrajectory(v, true, true, drive)));
+
     autoChooser.addOption("Just Shoot", commands.scoreInSpeaker());
     autoChooser.addOption("Do Nothing", Commands.none());
   }

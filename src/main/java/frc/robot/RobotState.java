@@ -128,4 +128,9 @@ public class RobotState {
   public Pose2d getOdometryPose() {
     return odometryPose;
   }
+
+  /** Returns the current wheel positions. */
+  public SwerveDriveWheelPositions getWheelPositions() {
+    return prevWheelPositions;
+  }
 }

@@ -17,6 +17,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 import frc.robot.RobotState;
@@ -448,5 +449,38 @@ public class Drive extends SubsystemBase {
     for (var module : modules) {
       module.resetEncoders();
     }
+  }
+
+  /**
+   * Provides an "escape hatch" command to manually orient all modules to the specified rotation.
+   */
+  public Command orientModules(Rotation2d orientation) {
+    return orientModules(new Rotation2d[] {orientation, orientation, orientation, orientation});
+  }
+
+  /** Provides an "escape hatch" command to manually orient modules to the specified rotations. */
+  public Command orientModules(Rotation2d[] orientations) {
+    final var tolerance = Math.toRadians(3.0);
+    return run(() -> {
+          for (int i = 0; i < modules.length; ++i) {
+            modules[i].runSetpoint(new SwerveModuleState(0.0, orientations[i]), 0);
+          }
+        })
+        .until(
+            () -> {
+              for (var i = 0; i < modules.length; ++i) {
+                final var delta =
+                    Misc.clampAngle(
+                        modules[i].getAngle().getRadians() - orientations[i].getRadians());
+
+                if (!Misc.epsilonEquals(delta, 0, tolerance)
+                    && !Misc.epsilonEquals(delta, Math.PI, tolerance)) {
+                  return false;
+                }
+              }
+
+              return true;
+            })
+        .withName("Orient Modules");
   }
 }

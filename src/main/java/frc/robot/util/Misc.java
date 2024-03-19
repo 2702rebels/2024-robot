@@ -7,6 +7,17 @@ import frc.robot.Constants;
 public final class Misc {
   private static final double TwoPI = 2 * Math.PI;
 
+  /** Determine whether two numbers are equal within the epsilon neighbourhood. */
+  public static boolean epsilonEquals(double a, double b, double epsilon) {
+    final var d = a - b;
+    return -epsilon <= d && d <= epsilon;
+  }
+
+  /** Determine whether two numbers are equal within the default epsilon neighbourhood. */
+  public static boolean epsilonEquals(double a, double b) {
+    return epsilonEquals(a, b, Constants.epsilon);
+  }
+
   /** Adds angles with minimum allocations. */
   public static Rotation2d add(Rotation2d a, Rotation2d b) {
     return new Rotation2d(a.getRadians() + b.getRadians());
