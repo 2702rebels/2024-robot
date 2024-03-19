@@ -22,9 +22,9 @@ public class RobotState {
   private final Kinematics<?, SwerveDriveWheelPositions> kinematics;
 
   // odometry is sampled at 5 ms (see DriveConstants.odometryFrequency),
-  // we typically see vision delays between 50-100 ms, therefore we
-  // keep track of the last 20 sampled poses for vision correction
-  private TimestampedCircularBuffer<Pose2d> sampledPoses = new TimestampedCircularBuffer<>(20);
+  // we typically see vision delays between 50-150 ms, therefore we
+  // keep track of the last 40 sampled poses for vision correction
+  private TimestampedCircularBuffer<Pose2d> sampledPoses = new TimestampedCircularBuffer<>(40);
 
   private Pose2d odometryPose = new Pose2d();
   private Pose2d estimatedPose = new Pose2d();
