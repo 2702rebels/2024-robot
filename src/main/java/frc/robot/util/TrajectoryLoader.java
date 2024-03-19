@@ -31,13 +31,18 @@ public final class TrajectoryLoader {
         .collect(
             Collectors.toMap(
                 entry -> entry.replace(".traj", ""),
-                entry -> Choreo.getTrajectory(entry.replace(".traj", ""))));
+                entry -> {
+                  System.out.println("Loading trajectory: " + entry);
+                  return Choreo.getTrajectory(entry.replace(".traj", ""));
+                }));
   }
 
   private static Set<String> enumerateFiles(String folder) throws IOException {
     try (var stream = Files.list(Paths.get(folder))) {
       return stream
-          .filter(file -> !Files.isDirectory(file))
+          .filter(
+              file ->
+                  !Files.isDirectory(file) && !file.getFileName().toString().endsWith(".1.traj"))
           .map(Path::getFileName)
           .map(Path::toString)
           .collect(Collectors.toSet());
