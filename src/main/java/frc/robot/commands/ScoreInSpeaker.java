@@ -40,7 +40,7 @@ public class ScoreInSpeaker extends Command {
 
   private Translation2d getOdometryCorrectedTagVector() {
     final var timestamp = Timer.getFPGATimestamp();
-    return state.correctViaOdometry(new Translation2d(tag.x, tag.z), tag.timestamp, timestamp);
+    return state.correctViaOdometry(new Translation2d(-tag.z, tag.x), tag.timestamp, timestamp);
   }
 
   @Override
@@ -58,8 +58,8 @@ public class ScoreInSpeaker extends Command {
   @Override
   public void execute() {
     final var vector = getOdometryCorrectedTagVector();
-    final var z = vector.getY();
-    final var x = vector.getX();
+    final var x = vector.getY();
+    final var z = -vector.getX();
 
     Logger.recordOutput(
         "TrackedShooting/Target",

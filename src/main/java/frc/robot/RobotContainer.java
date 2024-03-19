@@ -3,7 +3,6 @@ package frc.robot;
 import com.choreo.lib.ChoreoTrajectory;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.GenericHID;
@@ -201,7 +200,9 @@ public class RobotContainer {
         .onTrue(
             Commands.runOnce(
                     () -> {
-                      drive.setPose(new Pose2d(new Translation2d(), new Rotation2d()));
+                      // drive.setPose(new Pose2d(new Translation2d(), new Rotation2d()));
+                      drive.setPose(
+                          new Pose2d(FieldConstants.NoteSpeakerBlue, Rotation2d.fromDegrees(0)));
                       drive.reset();
                     })
                 .ignoringDisable(true));
