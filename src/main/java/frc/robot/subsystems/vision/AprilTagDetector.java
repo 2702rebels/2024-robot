@@ -3,6 +3,7 @@ package frc.robot.subsystems.vision;
 import edu.wpi.first.networktables.DoubleArraySubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.PubSubOption;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import org.littletonrobotics.junction.Logger;
@@ -20,7 +21,7 @@ public class AprilTagDetector extends SubsystemBase {
             .getTable("Vision")
             .getDoubleArrayTopic("PoseArray")
             .subscribe(
-                EmptyDoubleArray, PubSubOption.keepDuplicates(false), PubSubOption.sendAll(true));
+                EmptyDoubleArray, PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
 
     // initialize tags
     for (var i = 0; i < tags.length; ++i) {
@@ -31,6 +32,8 @@ public class AprilTagDetector extends SubsystemBase {
   }
 
   public void periodic() {
+    final var localTimestamp = Timer.getFPGATimestamp();
+
     final var queue = subscriber.readQueue();
     if (queue.length > 0) {
       for (var i = 0; i < queue.length; ++i) {
@@ -61,6 +64,10 @@ public class AprilTagDetector extends SubsystemBase {
         }
       }
     }
+
+    Logger.recordOutput("Vision/AprilTags/Queue Length", queue.length);
+    Logger.recordOutput("Vision/AprilTags/Timestamp", tags[0].timestamp);
+    Logger.recordOutput("Vision/AprilTags/Delay", localTimestamp - tags[0].timestamp);
 
     for (var i = 0; i < tags.length; ++i) {
       final var key = "Vision/AprilTags/" + tags[i].id;

@@ -245,7 +245,7 @@ public class Drive extends SubsystemBase {
       deltaSpeed = -setpointSpeed - measuredSpeed;
     }
 
-    deltaStates[index].speedMetersPerSecond = deltaSpeed;
+    deltaStates[index].speedMetersPerSecond = Math.abs(deltaSpeed);
     deltaStates[index].angle = Rotation2d.fromRadians(deltaAngle);
   }
 
