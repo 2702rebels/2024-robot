@@ -263,6 +263,8 @@ public class RobotContainer {
     // climb commands
     controllerDriver.povUp().onTrue(commands.homeHooks().andThen(commands.raiseHooks()));
     controllerDriver.back().onTrue(commands.retractHooks());
+
+    controllerDriver.povRight().onTrue(commands.wheelDiameterCharacterization());
   }
 
   /** Use this method to put commands on the SmartDashboard. */

@@ -2,11 +2,13 @@ package frc.robot;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.TimeInterpolatableBuffer;
 import edu.wpi.first.math.kinematics.Kinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveWheelPositions;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import frc.robot.subsystems.drive.DriveConstants;
+import frc.robot.util.TimestampedCircularBuffer;
 import org.littletonrobotics.junction.AutoLogOutput;
 
 public class RobotState {
@@ -18,6 +20,11 @@ public class RobotState {
   }
 
   private final Kinematics<?, SwerveDriveWheelPositions> kinematics;
+
+  // odometry is sampled at 5 ms (see DriveConstants.odometryFrequency),
+  // we typically see vision delays between 50-100 ms, therefore we
+  // keep track of the last 20 sampled poses for vision correction
+  private TimestampedCircularBuffer<Pose2d> sampledPoses = new TimestampedCircularBuffer<>(20);
 
   private Pose2d odometryPose = new Pose2d();
   private Pose2d estimatedPose = new Pose2d();
@@ -108,6 +115,9 @@ public class RobotState {
 
     // calculate diff from last odometry pose and add onto pose estimate
     estimatedPose = estimatedPose.exp(prevOdometryPose.log(odometryPose));
+
+    // history of recently sampled poses
+    sampledPoses.enqueue(timestamp, estimatedPose);
   }
 
   /** Resets pose. */
@@ -115,6 +125,41 @@ public class RobotState {
     estimatedPose = initialPose;
     odometryPose = initialPose;
     poseBuffer.clear();
+  }
+
+  /** Returns one of the recently sampled poses with the timestamp closest to the specified one. */
+  public Pose2d findPoseAt(double timestamp) {
+    return sampledPoses.findAt(timestamp);
+  }
+
+  /**
+   * Returns translation corrected for the motion based on the robot odometry between two
+   * timestamps.
+   *
+   * @param translation Translation to correct.
+   * @param timestampObserved Timestamp of the coordinate observation.
+   * @param timestampDesired Timestamp to correct to.
+   */
+  public Translation2d correctViaOdometry(
+      Translation2d translation, double timestampObserved, double timestampDesired) {
+    // no poses observed
+    if (sampledPoses.size() == 0) {
+      return translation;
+    }
+
+    final var poseObserved = sampledPoses.findAt(timestampObserved);
+    final var poseDesired = sampledPoses.findAt(timestampDesired);
+    final var translationObserved = poseObserved.getTranslation();
+    final var translationDesired = poseDesired.getTranslation();
+    final var rotation = poseObserved.getRotation();
+
+    // convert to field coordinates and adjust by the translation difference between two poses
+    final var fieldTranslation = translation.rotateBy(rotation);
+    final var dx = translationDesired.getX() - translationObserved.getX();
+    final var dy = translationDesired.getY() - translationObserved.getY();
+
+    return new Translation2d(fieldTranslation.getX() + dx, fieldTranslation.getY() + dy)
+        .rotateBy(rotation.unaryMinus());
   }
 
   /** Returns the current (estimated) robot pose. */

@@ -1,9 +1,12 @@
 package frc.robot.commands;
 
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.RobotState;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.led.Led;
 import frc.robot.subsystems.pivot.Pivot;
@@ -13,12 +16,13 @@ import frc.robot.subsystems.vision.AprilTagDetector;
 import org.littletonrobotics.junction.Logger;
 
 public class ScoreInSpeaker extends Command {
-  private Drive drive;
-  private Shooter shooter;
-  private Pivot pivot;
-  private AprilTagDetector aprilTagDetector;
+  private final Drive drive;
+  private final Shooter shooter;
+  private final Pivot pivot;
+  private final AprilTagDetector aprilTagDetector;
+  private final Led leds;
+  private final RobotState state;
   private AprilTag tag;
-  private Led leds;
 
   private boolean isStillTracking = false;
 
@@ -29,8 +33,14 @@ public class ScoreInSpeaker extends Command {
     this.pivot = pivot;
     this.aprilTagDetector = aprilTagDetector;
     this.leds = leds;
+    this.state = RobotState.getInstance();
 
     addRequirements(shooter, pivot, leds);
+  }
+
+  private Translation2d getOdometryCorrectedTagVector() {
+    final var timestamp = Timer.getFPGATimestamp();
+    return state.correctViaOdometry(new Translation2d(tag.x, tag.z), tag.timestamp, timestamp);
   }
 
   @Override
@@ -47,13 +57,21 @@ public class ScoreInSpeaker extends Command {
 
   @Override
   public void execute() {
-    final var pivotAngle = Math.toDegrees(Math.atan2(-2.3, tag.z));
+    final var vector = getOdometryCorrectedTagVector();
+    final var z = vector.getY();
+    final var x = vector.getX();
+
+    Logger.recordOutput(
+        "TrackedShooting/Target",
+        drive.getPose().getTranslation().plus(vector.rotateBy(drive.getPose().getRotation())));
+
+    final var pivotAngle = Math.toDegrees(Math.atan2(-2.3, z));
     Logger.recordOutput("TrackedShooting/PivotAngle", pivotAngle);
 
-    final var turnAngle = Math.atan2(tag.x, tag.z);
+    final var turnAngle = Math.atan2(x, z);
     Logger.recordOutput("TrackedShooting/TurnAngle", turnAngle);
 
-    final var speed = tag.z > 4.0 ? 4000 : 3000;
+    final var speed = z > 4.0 ? 4000 : 3000;
     Logger.recordOutput("TrackedShooting/Speed", speed);
 
     if (tag.tracked) {
