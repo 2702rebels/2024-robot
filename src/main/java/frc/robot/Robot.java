@@ -33,7 +33,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void robotInit() {
     var ntInstance = NetworkTableInstance.getDefault();
-    isLogging = ntInstance.getBooleanTopic("Vision/isLogging").publish();
+    isLogging = ntInstance.getBooleanTopic("Vision/IsLogging").publish();
     isLogging.set(false);
 
     // Pi is logging
