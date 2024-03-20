@@ -133,6 +133,7 @@ public class ScoreInSpeaker extends Command {
   @Override
   public void end(boolean interrupted) {
     shooter.stop();
+    drive.disableOrientationLock();
     pivot.setRequestedAngle(20);
   }
 
