@@ -28,7 +28,7 @@ public class AprilTagDetector extends SubsystemBase {
       tags[i] = new AprilTag(i + 1);
     }
 
-    SmartDashboard.putNumber("/Vision/Exposure", 480);
+    SmartDashboard.putNumber("Vision/Exposure", 480);
   }
 
   public void periodic() {
