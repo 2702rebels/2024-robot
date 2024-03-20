@@ -1,7 +1,6 @@
 package frc.robot.commands;
 
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
@@ -99,20 +98,7 @@ public class ScoreInSpeaker extends Command {
         leds.setTracking(true);
       }
 
-      drive.enableOrientationLock(drive.getRotation().getRadians() - turnAngle);
-
-      // Hack to update drive train directly if running in auto. Instead of the hack to piggyback
-      // off the teleop drive command.
-      if (DriverStation.isAutonomous()) {
-        final var speeds =
-            ChassisSpeeds.fromFieldRelativeSpeeds(
-                0,
-                0,
-                drive.getOrientationLockRotation() * drive.getMaxAngularSpeedRadPerSec(),
-                drive.getRotation());
-
-        drive.runVelocity(speeds);
-      }
+      drive.steeringLock(turnAngle);
 
       pivot.setRequestedAngle(-pivotAngle);
       shooter.setSpeed(speed);
@@ -132,8 +118,8 @@ public class ScoreInSpeaker extends Command {
 
   @Override
   public void end(boolean interrupted) {
+    drive.steeringUnlock();
     shooter.stop();
-    drive.disableOrientationLock();
     pivot.setRequestedAngle(20);
   }
 

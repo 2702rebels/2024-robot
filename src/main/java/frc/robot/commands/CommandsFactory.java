@@ -111,16 +111,29 @@ public class CommandsFactory {
     return new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led);
   }
 
-  /** Commands intake to run until the front beam is tripped. */
-  public Command intake() {
+  /**
+   * Commands intake to run until the front beam is tripped.
+   *
+   * @param visionAssistedSteering Indicates that note detection should be used if available to
+   *     assist in steering while intaking
+   */
+  public Command intake(boolean visionAssistedSteering) {
     return new FunctionalCommand(
         () -> {
           intake.start();
           pivot.setRequestedAngle(90);
           shooter.feedForward();
         },
-        () -> {},
+        () -> {
+          if (visionAssistedSteering) {
+            final var note = noteDetector.getTrackedNote();
+            if (note != null) {
+              drive.steeringLock(note.yaw().getRadians());
+            }
+          }
+        },
         interrupted -> {
+          drive.steeringUnlock();
           intake.stop();
           pivot.setRequestedAngle(20);
           shooter.stopFeed();
@@ -129,6 +142,11 @@ public class CommandsFactory {
         intake,
         pivot,
         shooter);
+  }
+
+  /** Commands intake to run until the front beam is tripped. */
+  public Command intake() {
+    return intake(false);
   }
 
   /** Commands ejection of the game piece by running the intake in reverse. */

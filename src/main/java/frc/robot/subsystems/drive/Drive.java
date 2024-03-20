@@ -24,6 +24,7 @@ import frc.robot.RobotState;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.Misc;
+import java.util.OptionalDouble;
 import java.util.function.Function;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -80,6 +81,9 @@ public class Drive extends SubsystemBase {
   private double orientationLockAngleRad;
   private boolean orientationLockEnabled;
   private final PIDController orientationController;
+  private final PIDController steeringController;
+
+  private OptionalDouble steeringTurnAngleRadians = OptionalDouble.empty();
 
   private boolean stopX;
 
@@ -112,6 +116,10 @@ public class Drive extends SubsystemBase {
 
     orientationController = new PIDController(orientationP.get(), 0, 0);
     orientationController.enableContinuousInput(-Math.PI, Math.PI);
+
+    steeringController = new PIDController(orientationP.get(), 0, 0);
+    steeringController.enableContinuousInput(-Math.PI, Math.PI);
+    steeringController.setSetpoint(0);
 
     // configure AutoBuilder for PathPlanner
     AutoBuilder.configureHolonomic(
@@ -255,6 +263,7 @@ public class Drive extends SubsystemBase {
     // update controllers if tunable numbers have changed
     if (orientationP.hasChanged(callerId)) {
       orientationController.setP(orientationP.get());
+      steeringController.setP(orientationP.get());
     }
 
     for (var module : modules) {
@@ -283,6 +292,14 @@ public class Drive extends SubsystemBase {
   public void runVelocity(ChassisSpeeds speeds) {
     SwerveModuleState[] setpointStates;
     double[] setpointAngularVelocities = null;
+
+    // if steering adjustment is provided we override commanded omega
+    // with the one compute based on the steering controller PID output
+    if (steeringTurnAngleRadians.isPresent()) {
+      speeds.omegaRadiansPerSecond =
+          steeringController.calculate(steeringTurnAngleRadians.getAsDouble(), 0)
+              * getMaxAngularSpeedRadPerSec();
+    }
 
     // if all commanded velocities are effectively zero and
     // robot must be stopped in X wheel arrangement, use custom setpoints
@@ -405,6 +422,21 @@ public class Drive extends SubsystemBase {
   /** Returns the maximum angular speed in radians per sec */
   public double getMaxAngularSpeedRadPerSec() {
     return DriveConstants.drivetrainConfig.maxAngularSpeed();
+  }
+
+  /**
+   * Continously forces the drive subsystem to active maintain steering lock towards the goal by
+   * giving it a turn angle to adjust the current rotation by.
+   *
+   * <p>This method can be used both with teleop and autonomous modes.
+   */
+  public void steeringLock(double turnAngleRadians) {
+    steeringTurnAngleRadians = OptionalDouble.of(turnAngleRadians);
+  }
+
+  /** Releases steering lock. */
+  public void steeringUnlock() {
+    steeringTurnAngleRadians = OptionalDouble.empty();
   }
 
   /** Enables orientation lock. */

@@ -144,11 +144,14 @@ public class RobotContainer {
     configureSmartDashboard();
   }
 
-  /** Creates new command that drives specified trajectory with intake running. */
+  /**
+   * Creates new command that drives specified trajectory with intake running until game piece is
+   * acquired.
+   */
   private Command driveAndIntake(String trajectoryName, double timeoutSeconds) {
     return new DriveTrajectory(trajectories.get(trajectoryName), true, true, drive)
-        .alongWith(commands.intake())
-        .until(shooter::hasGamePiece)
+        .alongWith(commands.intake(true))
+        .until(shooter::isFrontBeamTripped)
         .withTimeout(timeoutSeconds);
   }
 

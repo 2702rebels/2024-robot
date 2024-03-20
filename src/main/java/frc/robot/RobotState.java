@@ -20,10 +20,16 @@ public class RobotState {
 
   private final Kinematics<?, SwerveDriveWheelPositions> kinematics;
 
-  // odometry is sampled at 5 ms (see DriveConstants.odometryFrequency),
+  // odometry is sampled at 5 ms (see Constants.odometryFrequency),
   // we typically see vision delays between 50-150 ms, therefore we
-  // keep track of the last 40 sampled poses for vision correction
-  private TimestampedCircularBuffer<Pose2d> sampledPoses = new TimestampedCircularBuffer<>(40);
+  // should track at least last 40 sampled poses for vision correction
+  private TimestampedCircularBuffer<Pose2d> highFrequencySampledPoses =
+      new TimestampedCircularBuffer<>(40);
+
+  // we also keep track odometry poses at a lower sampling frequency of 20ms,
+  // to allow for a bigger window (5 seconds) and enable longer target tracking
+  private TimestampedCircularBuffer<Pose2d> lowFrequencySampledPoses =
+      new TimestampedCircularBuffer<>((int) (5.0 / Constants.cyclePeriodSeconds));
 
   private Pose2d odometryPose = new Pose2d();
   private Pose2d estimatedPose = new Pose2d();
@@ -116,7 +122,11 @@ public class RobotState {
     estimatedPose = estimatedPose.exp(prevOdometryPose.log(odometryPose));
 
     // history of recently sampled poses
-    sampledPoses.enqueue(timestamp, estimatedPose);
+    highFrequencySampledPoses.enqueue(timestamp, estimatedPose);
+
+    if (lowFrequencySampledPoses.getHeadTimestamp() <= timestamp - Constants.cyclePeriodSeconds) {
+      lowFrequencySampledPoses.enqueue(timestamp, estimatedPose);
+    }
   }
 
   /** Resets pose. */
@@ -128,7 +138,14 @@ public class RobotState {
 
   /** Returns one of the recently sampled poses with the timestamp closest to the specified one. */
   public Pose2d findPoseAt(double timestamp) {
-    return sampledPoses.findAt(timestamp);
+    return timestamp < highFrequencySampledPoses.getTailTimestamp()
+        ? lowFrequencySampledPoses.findAt(timestamp)
+        : highFrequencySampledPoses.findAt(timestamp);
+  }
+
+  /** Determines whether the specified timestamp is within the tracked odometry range. */
+  public boolean withinTrackedOdometry(double timestamp) {
+    return timestamp >= highFrequencySampledPoses.getTailTimestamp();
   }
 
   /** Returns the current (estimated) robot pose. */
@@ -150,11 +167,11 @@ public class RobotState {
 
   /** Returns the robot pose observed at the specified timestamp. */
   public Pose2d getPoseAtTimestamp(double timestmap) {
-    return sampledPoses.findAt(timestmap);
+    return highFrequencySampledPoses.findAt(timestmap);
   }
 
   /** Determines whether we have any sampled poses. */
   public boolean hasSampledPoses() {
-    return sampledPoses.size() > 0;
+    return highFrequencySampledPoses.size() > 0;
   }
 }

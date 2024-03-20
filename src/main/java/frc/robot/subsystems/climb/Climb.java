@@ -103,7 +103,7 @@ public class Climb extends SubsystemBase {
     io.setPosition(hookRetractedPosition.get());
   }
 
-  /** Sets position to ralex the ratchet. */
+  /** Sets position to relax the ratchet. */
   public void setRelaxPosition() {
     io.configurePID(kP.get(), kI.get(), kD.get());
     desiredPosition = Math.max(0, inputs.position - 4);

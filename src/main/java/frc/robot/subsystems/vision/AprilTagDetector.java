@@ -33,12 +33,14 @@ public class AprilTagDetector extends SubsystemBase {
 
   public void periodic() {
     final var localTimestamp = Timer.getFPGATimestamp();
+    var visionTimestamp = 0.0;
 
     final var queue = subscriber.readQueue();
     if (queue.length > 0) {
       for (var i = 0; i < queue.length; ++i) {
         final var timestamp = queue[i].timestamp / 1E6;
         final var frame = queue[i].value;
+        visionTimestamp = timestamp;
 
         // array contains consecutive 3 tuples of the following format
         // [x, y, z]
@@ -51,9 +53,9 @@ public class AprilTagDetector extends SubsystemBase {
 
           final var x = frame[offset];
           if (Math.abs(x) > cutoff) {
-            // keep the last known vector but set tracked to false
+            // keep the last known vector and timestamp but set tracked to false
+            // allows using historical observation if we have relevant odometry
             tags[j].tracked = false;
-            tags[j].timestamp = timestamp;
           } else {
             tags[j].tracked = true;
             tags[j].x = x;
@@ -66,8 +68,10 @@ public class AprilTagDetector extends SubsystemBase {
     }
 
     Logger.recordOutput("Vision/AprilTags/Queue Length", queue.length);
-    Logger.recordOutput("Vision/AprilTags/Timestamp", tags[0].timestamp);
-    Logger.recordOutput("Vision/AprilTags/Delay", localTimestamp - tags[0].timestamp);
+    if (queue.length > 0) {
+      Logger.recordOutput("Vision/AprilTags/Timestamp", visionTimestamp);
+      Logger.recordOutput("Vision/AprilTags/Delay", localTimestamp - visionTimestamp);
+    }
 
     for (var i = 0; i < tags.length; ++i) {
       final var key = "Vision/AprilTags/" + tags[i].id;
