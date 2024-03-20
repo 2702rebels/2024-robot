@@ -38,11 +38,6 @@ public class ScoreInSpeaker extends Command {
     addRequirements(shooter, pivot, leds);
   }
 
-  private Translation2d getOdometryCorrectedTagVector() {
-    final var timestamp = Timer.getFPGATimestamp();
-    return state.correctViaOdometry(new Translation2d(-tag.z, tag.x), tag.timestamp, timestamp);
-  }
-
   @Override
   public void initialize() {
     // get the tag we need to be scoring on
@@ -57,13 +52,37 @@ public class ScoreInSpeaker extends Command {
 
   @Override
   public void execute() {
-    final var vector = getOdometryCorrectedTagVector();
-    final var x = vector.getY();
-    final var z = -vector.getX();
+    final var timestamp = Timer.getFPGATimestamp();
 
-    Logger.recordOutput(
-        "TrackedShooting/Target",
-        drive.getPose().getTranslation().plus(vector.rotateBy(drive.getPose().getRotation())));
+    var z = tag.z;
+    var x = tag.x;
+
+    // if we have historical poses, use them to correct the vector
+    // based on the difference between current and historic poses
+    if (state.hasSampledPoses()) {
+      final var poseThen = state.getPoseAtTimestamp(tag.timestamp);
+      final var poseNow = state.getPoseAtTimestamp(timestamp);
+      final var translationThen = poseThen.getTranslation();
+      final var translationNow = poseNow.getTranslation();
+      final var rotationThen = poseThen.getRotation();
+      final var rotationNow = poseNow.getRotation();
+
+      // convert from vision frame of reference to field frame of reference
+      final var fieldTranslation = new Translation2d(-z, x).rotateBy(rotationThen);
+      final var dx = translationNow.getX() - translationThen.getX();
+      final var dy = translationNow.getY() - translationThen.getY();
+
+      // vector to the vision target in field frame of reference
+      final var targetVector =
+          new Translation2d(fieldTranslation.getX() + dx, fieldTranslation.getY() + dy);
+
+      Logger.recordOutput("TrackedShooting/Target", translationNow.plus(targetVector));
+
+      // convert target vector back to the vision frame of reference
+      final var t = targetVector.rotateBy(rotationNow.unaryMinus());
+      x = t.getY();
+      z = -t.getX();
+    }
 
     final var pivotAngle = Math.toDegrees(Math.atan2(-2.3, z));
     Logger.recordOutput("TrackedShooting/PivotAngle", pivotAngle);

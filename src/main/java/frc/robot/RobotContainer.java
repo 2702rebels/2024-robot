@@ -262,7 +262,7 @@ public class RobotContainer {
     controllerDriver.povLeft().whileTrue(commands.reindex().withTimeout(2));
 
     // climb commands
-    controllerDriver.povUp().onTrue(commands.homeHooks().andThen(commands.raiseHooks()));
+    controllerDriver.povUp().onTrue(commands.raiseHooks());
     controllerDriver.back().onTrue(commands.retractHooks());
 
     controllerDriver.povRight().onTrue(commands.wheelDiameterCharacterization());

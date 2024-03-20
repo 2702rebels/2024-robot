@@ -2,7 +2,6 @@ package frc.robot;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.TimeInterpolatableBuffer;
 import edu.wpi.first.math.kinematics.Kinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveWheelPositions;
@@ -132,36 +131,6 @@ public class RobotState {
     return sampledPoses.findAt(timestamp);
   }
 
-  /**
-   * Returns translation corrected for the motion based on the robot odometry between two
-   * timestamps.
-   *
-   * @param translation Translation to correct.
-   * @param timestampObserved Timestamp of the coordinate observation.
-   * @param timestampDesired Timestamp to correct to.
-   */
-  public Translation2d correctViaOdometry(
-      Translation2d translation, double timestampObserved, double timestampDesired) {
-    // no poses observed
-    if (sampledPoses.size() == 0) {
-      return translation;
-    }
-
-    final var poseObserved = sampledPoses.findAt(timestampObserved);
-    final var poseDesired = sampledPoses.findAt(timestampDesired);
-    final var translationObserved = poseObserved.getTranslation();
-    final var translationDesired = poseDesired.getTranslation();
-    final var rotation = poseObserved.getRotation();
-
-    // convert to field coordinates and adjust by the translation difference between two poses
-    final var fieldTranslation = translation.rotateBy(rotation);
-    final var dx = translationDesired.getX() - translationObserved.getX();
-    final var dy = translationDesired.getY() - translationObserved.getY();
-
-    return new Translation2d(fieldTranslation.getX() + dx, fieldTranslation.getY() + dy)
-        .rotateBy(rotation.unaryMinus());
-  }
-
   /** Returns the current (estimated) robot pose. */
   @AutoLogOutput(key = "Odometry/Robot")
   public Pose2d getEstimatedPose() {
@@ -177,5 +146,15 @@ public class RobotState {
   /** Returns the current wheel positions. */
   public SwerveDriveWheelPositions getWheelPositions() {
     return prevWheelPositions;
+  }
+
+  /** Returns the robot pose observed at the specified timestamp. */
+  public Pose2d getPoseAtTimestamp(double timestmap) {
+    return sampledPoses.findAt(timestmap);
+  }
+
+  /** Determines whether we have any sampled poses. */
+  public boolean hasSampledPoses() {
+    return sampledPoses.size() > 0;
   }
 }

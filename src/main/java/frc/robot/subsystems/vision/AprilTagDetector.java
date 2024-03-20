@@ -1,13 +1,11 @@
 package frc.robot.subsystems.vision;
 
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.networktables.DoubleArraySubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.PubSubOption;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.RobotState;
 import org.littletonrobotics.junction.Logger;
 
 public class AprilTagDetector extends SubsystemBase {
@@ -78,15 +76,6 @@ public class AprilTagDetector extends SubsystemBase {
       Logger.recordOutput(key + "/Y", tags[i].y);
       Logger.recordOutput(key + "/Z", tags[i].z);
     }
-
-    // Tag7
-    final var rotation = RobotState.getInstance().getOdometryPose().getRotation();
-    Logger.recordOutput(
-        "Vision/AprilTags/7/Target",
-        RobotState.getInstance()
-            .getOdometryPose()
-            .getTranslation()
-            .plus(new Translation2d(-tags[6].z, tags[6].x).rotateBy(rotation)));
   }
 
   /**
