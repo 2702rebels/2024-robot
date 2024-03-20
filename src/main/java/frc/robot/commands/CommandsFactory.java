@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.StartEndCommand;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.subsystems.climb.Climb;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
@@ -192,40 +193,58 @@ public class CommandsFactory {
 
   /** Commands hooks to home until the limit swith closes. */
   public Command homeHooks() {
-    return new StartEndCommand(
+    return new FunctionalCommand(
             () -> {
               climb.releaseRatchet();
               climb.home();
             },
-            () -> climb.stop(),
+            () -> {},
+            interrupted -> climb.stop(),
+            () -> climb.isLimitSwitchClosed(),
             climb)
-        .until(climb::isLimitSwitchClosed);
+        .withName("HomeHooks");
   }
 
   /** Commands hooks to retract until the position is reached or the limit switch closes. */
   public Command retractHooks() {
-    return new StartEndCommand(
+    return new FunctionalCommand(
             () -> {
               climb.engageRatchet();
               climb.setRetractPosition();
             },
-            () -> climb.stop(),
+            () -> {},
+            (interrupted) -> climb.stop(),
+            () -> climb.isLimitSwitchClosed() || climb.isAtRetractGoal(),
             climb)
-        .until(climb::isLimitSwitchClosed);
+        .withName("RetractHooks");
   }
 
   /** Commands hooks to raise until they reach the top position. */
   public Command raiseHooks() {
-    return new StartEndCommand(
-        () -> {
-          climb.releaseRatchet();
-          climb.setRaisePosition();
-        },
-        () -> {
-          climb.stop();
-          climb.engageRatchet();
-        },
-        climb);
+    final var relax =
+        new FunctionalCommand(
+                () -> {
+                  climb.releaseRatchet();
+                  climb.setRelaxPosition();
+                },
+                () -> {},
+                (interrupted) -> climb.stop(),
+                climb::isAtDesiredGoal,
+                climb)
+            .withName("RelaxClimb");
+
+    final var raise =
+        new FunctionalCommand(
+                () -> climb.setRaisePosition(),
+                () -> {},
+                (interrupted) -> climb.stop(),
+                climb::isAtRaisedGoal,
+                climb)
+            .withName("RaiseClimb");
+
+    return Commands.either(relax.andThen(new WaitCommand(0.25)), homeHooks(), climb::isHomed)
+        .andThen(raise)
+        .withName("RaiseHooks");
   }
 
   /** Commands climb ratchet to engage. */

@@ -2,6 +2,7 @@ package frc.robot.subsystems.climb;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.LoggedTunableNumber;
+import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
 public class Climb extends SubsystemBase {
@@ -14,10 +15,14 @@ public class Climb extends SubsystemBase {
   private static final LoggedTunableNumber hookRaisedPosition = new LoggedTunableNumber("Climb/Hook Raised Position", 55);
   private static final LoggedTunableNumber hookRetractedPosition = new LoggedTunableNumber("Climb/Hook Retracted Position", 20);
   private static final LoggedTunableNumber homeSpeed = new LoggedTunableNumber("Climb/Home Speed", -0.2);
+  private static final LoggedTunableNumber tolerance = new LoggedTunableNumber("Climb/Tolerance", 2.0);
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Climb/Motor P", 0.1);
   private static final LoggedTunableNumber kI = new LoggedTunableNumber("Climb/Motor I", 0.0);
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("Climb/Motor D", 0.0);
   // spotless:on
+
+  private boolean isHomed;
+  private double desiredPosition;
 
   public Climb(ClimbIO io) {
     this.io = io;
@@ -38,13 +43,38 @@ public class Climb extends SubsystemBase {
 
     // re-zero position when limit switch closes
     if (isLimitSwitchClosed()) {
-      io.setPosition(0);
+      io.zeroEncoder();
+      isHomed = true;
     }
   }
 
   /** Determines whether limit switch closed. */
+  @AutoLogOutput(key = "Climb/Limit Switch Closed")
   public boolean isLimitSwitchClosed() {
     return inputs.limitSwitchClosed;
+  }
+
+  /** Determines whether the climb has been homed. */
+  @AutoLogOutput(key = "Climb/Homed")
+  public boolean isHomed() {
+    return isHomed;
+  }
+
+  /** Determines whether the climb reaches retract commanded position. */
+  @AutoLogOutput(key = "Climb/Retracted")
+  public boolean isAtRetractGoal() {
+    return Math.abs(inputs.position - hookRetractedPosition.get()) < tolerance.get();
+  }
+
+  /** Determines whether the climb reaches raised commanded position. */
+  @AutoLogOutput(key = "Climb/Raised")
+  public boolean isAtRaisedGoal() {
+    return Math.abs(inputs.position - hookRaisedPosition.get()) < tolerance.get();
+  }
+
+  /** Determines whethre the climb reaches manually commanded position. */
+  public boolean isAtDesiredGoal() {
+    return Math.abs(inputs.position - desiredPosition) < tolerance.get();
   }
 
   /** Turns climbing motor off. */
@@ -69,11 +99,21 @@ public class Climb extends SubsystemBase {
 
   /** Sets position to retracted. */
   public void setRetractPosition() {
+    io.configurePID(kP.get(), kI.get(), kD.get());
     io.setPosition(hookRetractedPosition.get());
+  }
+
+  /** Sets position to ralex the ratchet. */
+  public void setRelaxPosition() {
+    io.configurePID(kP.get(), kI.get(), kD.get());
+    desiredPosition = Math.max(0, inputs.position - 4);
+    io.setPosition(desiredPosition);
   }
 
   /** Sets position to raised. */
   public void setRaisePosition() {
+    // note different kP here when raising hooks
+    io.configurePID(kP.get() / 4, kI.get(), kD.get());
     io.setPosition(hookRaisedPosition.get());
   }
 }
