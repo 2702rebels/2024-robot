@@ -54,7 +54,7 @@ public final class DriveConstants {
           Units.inchesToMeters(21.5), // width X
           Units.inchesToMeters(21.5), // width Y
           5.0, // max linear speed
-          5.0, // max linear acceleration
+          4.0, // max linear acceleration
           driveMotorConfig,
           turnMotorConfig);
 
@@ -77,7 +77,7 @@ public final class DriveConstants {
         case REAL, REPLAY -> new ModuleTunableFactors(
             new MotorTunableFactorsPID(0.3, 0.0, 0.0, 0.0),
             new MotorTunableFactorsPID(2.5, 0.0, 0.0, 0.0),
-            new MotorTunableFactorsFF(0.0, 2.6, 0.0));
+            new MotorTunableFactorsFF(0.2, 2.6, 0.0));
         default -> new ModuleTunableFactors(
             new MotorTunableFactorsPID(0.0, 0.0, 0.0, 0.0),
             new MotorTunableFactorsPID(0.0, 0.0, 0.0, 0.0),

@@ -357,6 +357,13 @@ public class Drive extends SubsystemBase {
     }
   }
 
+  /** Runs characterization at the commanded voltage. */
+  public void runCharacterization(double volts) {
+    for (var module : modules) {
+      module.runCharacterization(volts, 0);
+    }
+  }
+
   /** Returns the average drive velocity in meters/sec. */
   public double getCharacterizationVelocity() {
     var driveVelocityAverage = 0.0;

@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.CommandsFactory;
 import frc.robot.commands.CommandsFactory.LedMode;
 import frc.robot.commands.DriveTrajectory;
+import frc.robot.commands.FeedForwardCharacterization;
 import frc.robot.subsystems.climb.Climb;
 import frc.robot.subsystems.climb.ClimbIO;
 import frc.robot.subsystems.climb.ClimbIOSim;
@@ -147,6 +148,7 @@ public class RobotContainer {
   private Command driveAndIntake(String trajectoryName, double timeoutSeconds) {
     return new DriveTrajectory(trajectories.get(trajectoryName), true, true, drive)
         .alongWith(commands.intake())
+        .until(shooter::hasGamePiece)
         .withTimeout(timeoutSeconds);
   }
 
@@ -171,6 +173,11 @@ public class RobotContainer {
 
     autoChooser.addOption(
         "Wheel Diameter Characterization", commands.wheelDiameterCharacterization());
+
+    autoChooser.addOption(
+        "Drive FF Characterization",
+        new FeedForwardCharacterization(
+            drive, drive::runCharacterization, drive::getCharacterizationVelocity));
 
     trajectories.forEach(
         (k, v) -> autoChooser.addOption("Path " + k, new DriveTrajectory(v, true, true, drive)));

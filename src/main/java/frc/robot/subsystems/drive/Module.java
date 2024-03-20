@@ -140,6 +140,12 @@ public class Module {
     io.setTurnAngle(desiredAngle, turningFF);
   }
 
+  /** Runs characterization with the specified voltage */
+  public void runCharacterization(double volts, double turnAngleRadians) {
+    io.setTurnAngle(Misc.clampAngle(turnAngleRadians + angularOffset.getRadians()));
+    io.setDriveVoltage(volts);
+  }
+
   /** Disables all outputs to motors. */
   public void stop() {
     io.setTurnVoltage(0.0);
