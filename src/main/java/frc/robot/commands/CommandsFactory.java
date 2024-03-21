@@ -1,5 +1,6 @@
 package frc.robot.commands;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -22,6 +23,7 @@ import frc.robot.util.Misc;
 import java.util.Arrays;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
+import java.util.function.Supplier;
 
 /** Commands factory. */
 public class CommandsFactory {
@@ -108,71 +110,60 @@ public class CommandsFactory {
 
   /** Commands sequence to score in speaker objective. */
   public Command scoreInSpeaker() {
-    return new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector, led);
-  }
-
-  /**
-   * Commands intake to run until the front beam is tripped.
-   *
-   * @param visionAssistedSteering Indicates that note detection should be used if available to
-   *     assist in steering while intaking
-   */
-  public Command intake(boolean visionAssistedSteering) {
-    return new FunctionalCommand(
-        () -> {
-          intake.start();
-          pivot.setRequestedAngle(90);
-          shooter.feedForward();
-        },
-        () -> {
-          if (visionAssistedSteering) {
-            final var note = noteDetector.getTrackedNote();
-            if (note != null) {
-              drive.steeringLock(note.yaw().getRadians());
-            }
-          }
-        },
-        interrupted -> {
-          drive.steeringUnlock();
-          intake.stop();
-          pivot.setRequestedAngle(20);
-          shooter.stopFeed();
-        },
-        shooter::isFrontBeamTripped,
-        intake,
-        pivot,
-        shooter);
+    return new ScoreInSpeaker(drive, shooter, pivot, aprilTagDetector).withName("ScoreInSpeaker");
   }
 
   /** Commands intake to run until the front beam is tripped. */
   public Command intake() {
-    return intake(false);
+    return new FunctionalCommand(
+            () -> {
+              intake.start();
+              pivot.setRequestedAngle(90);
+              shooter.feedForward();
+            },
+            () -> {},
+            interrupted -> {
+              intake.stop();
+              pivot.setRequestedAngle(20);
+              shooter.stopFeed();
+            },
+            shooter::isFrontBeamTripped,
+            intake,
+            pivot,
+            shooter)
+        .withName("Intake");
   }
 
   /** Commands ejection of the game piece by running the intake in reverse. */
   public Command eject() {
-    return new StartEndCommand(intake::reverse, intake::stop, intake);
+    return new StartEndCommand(intake::reverse, intake::stop, intake).withName("Eject");
   }
 
   /** Commands pivot arm to position until it arrives there within specified tolerance. */
   public Command moveArmToPosition(double angle, double allowance) {
     return new FunctionalCommand(
-        () -> pivot.setRequestedAngle(angle),
-        () -> {},
-        interupted -> {},
-        () -> pivot.isAtGoal(allowance),
-        pivot);
+            () -> pivot.setRequestedAngle(angle),
+            () -> {},
+            interupted -> {},
+            () -> pivot.isAtGoal(allowance),
+            pivot)
+        .withName("MoveArmToPosition");
   }
 
   /** Commands pivot arm to position until it arrives there within the default tolerance. */
   public Command moveArmToPosition(double angle) {
     return new FunctionalCommand(
-        () -> pivot.setRequestedAngle(angle), () -> {}, interupted -> {}, pivot::isAtGoal, pivot);
+            () -> pivot.setRequestedAngle(angle),
+            () -> {},
+            interupted -> {},
+            pivot::isAtGoal,
+            pivot)
+        .withName("MoveArmToPosition");
   }
 
   /** Commands pivot to disable the control loop. */
   public Command disablePivot() {
-    return Commands.runOnce(pivot::disable, pivot).ignoringDisable(true);
+    return Commands.runOnce(pivot::disable, pivot).ignoringDisable(true).withName("DisablePivot");
   }
 
   /**
@@ -181,21 +172,23 @@ public class CommandsFactory {
    */
   public Command shoot(double rpm, BooleanSupplier ready) {
     return new FunctionalCommand(
-        () -> shooter.setSpeed(rpm),
-        () -> {
-          if (shooter.isAtSpeed(rpm) && ready.getAsBoolean()) {
-            shooter.feedOut();
-          }
-        },
-        (interupted) -> shooter.stop(),
-        () -> false,
-        shooter);
+            () -> shooter.setSpeed(rpm),
+            () -> {
+              if (shooter.isAtSpeed(rpm) && ready.getAsBoolean()) {
+                shooter.feedOut();
+              }
+            },
+            (interupted) -> shooter.stop(),
+            () -> false,
+            shooter)
+        .withName("shoot");
   }
 
   /** Commands shooter to start feeding the game piece until the front beam is tripped. */
   public Command feedIn() {
     return new StartEndCommand(shooter::feedForward, shooter::stopFeed, shooter)
-        .until(shooter::isFrontBeamTripped);
+        .until(shooter::isFrontBeamTripped)
+        .withName("FeedIn");
   }
 
   /** Commands shooter to reindex the game piece. */
@@ -206,7 +199,8 @@ public class CommandsFactory {
             (interrupted) -> shooter.stopFeed(),
             () -> !shooter.isFrontBeamTripped(),
             shooter)
-        .andThen(feedIn());
+        .andThen(feedIn())
+        .withName("Reindex");
   }
 
   /** Commands hooks to home until the limit swith closes. */
@@ -267,12 +261,12 @@ public class CommandsFactory {
 
   /** Commands climb ratchet to engage. */
   public Command engageRatchet() {
-    return new InstantCommand(climb::engageRatchet, climb);
+    return new InstantCommand(climb::engageRatchet, climb).withName("EngageRatchet");
   }
 
   /** Commands climb ratchet to release. */
   public Command releaseRatchet() {
-    return new InstantCommand(climb::releaseRatchet, climb);
+    return new InstantCommand(climb::releaseRatchet, climb).withName("ReleaseRatchet");
   }
 
   /** Commands wheel diameter characterization routine. */
@@ -282,5 +276,10 @@ public class CommandsFactory {
         .withTimeout(2)
         .andThen(new WheelDiameterCharacterization(drive, 1))
         .withName("WheelDiameterCharacterization");
+  }
+
+  /** Resets pose. */
+  public Command setPose(Supplier<Pose2d> pose) {
+    return Commands.runOnce(() -> drive.setPose(pose.get()), drive);
   }
 }

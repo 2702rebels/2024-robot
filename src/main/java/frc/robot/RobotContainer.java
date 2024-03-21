@@ -3,10 +3,12 @@ package frc.robot;
 import com.choreo.lib.ChoreoTrajectory;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -49,6 +51,8 @@ import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TrajectoryLoader;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
@@ -86,7 +90,6 @@ public class RobotContainer {
   // when the robot is in the disabled state
   private Command commandLedLogging;
   private Command commandLedDisabled;
-  private Command commandLedTrackingTags;
 
   public RobotContainer() {
     switch (Constants.currentMode) {
@@ -136,7 +139,6 @@ public class RobotContainer {
 
     commandLedDisabled = commands.led(LedMode.DISABLED);
     commandLedLogging = commands.led(LedMode.LOGGING);
-    commandLedTrackingTags = commands.led(LedMode.TRACKING_TAGS);
 
     configureBindings();
     configureTriggers();
@@ -148,26 +150,73 @@ public class RobotContainer {
    * Creates new command that drives specified trajectory with intake running until game piece is
    * acquired.
    */
-  private Command driveAndIntake(String trajectoryName, double timeoutSeconds) {
-    return new DriveTrajectory(trajectories.get(trajectoryName), true, true, drive)
-        .alongWith(commands.intake(true))
+  private Command driveAndIntake(
+      String trajectoryName, double timeoutSeconds, boolean ResetOdometry) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), ResetOdometry, true, drive)
         .until(shooter::isFrontBeamTripped)
+        .alongWith(commands.intake())
         .withTimeout(timeoutSeconds);
+  }
+
+  /** Creates a wrapper with timeout for safety during auto. */
+  private Command scoreInSpeakerAuto() {
+    return commands.scoreInSpeaker().withTimeout(3);
   }
 
   /** Creates new command sequence for a default auto with specific trajectories. */
   private Command defaultAuto(String trajectory1, String trajectory2) {
     return Commands.sequence(
-        commands.scoreInSpeaker(),
-        driveAndIntake(trajectory1, 2),
-        commands.scoreInSpeaker(),
-        driveAndIntake(trajectory2, 3));
+        scoreInSpeakerAuto(),
+        driveAndIntake(trajectory1, 3, true),
+        scoreInSpeakerAuto(),
+        driveAndIntake(trajectory2, 4, false));
+  }
+
+  private Command defaultAuto(Supplier<Pose2d> pose, String trajectory1, String trajectory2) {
+    return Commands.sequence(
+        commands.setPose(pose),
+        scoreInSpeakerAuto(),
+        driveAndIntake(trajectory1, 3, false),
+        scoreInSpeakerAuto(),
+        driveAndIntake(trajectory2, 4, false));
+  }
+
+  private Command defaultAuto(String trajectory) {
+    return Commands.sequence(
+        scoreInSpeakerAuto(), driveAndIntake(trajectory, 3, true), scoreInSpeakerAuto());
+  }
+
+  private Command defaultAuto(Supplier<Pose2d> pose, String trajectory) {
+    return Commands.sequence(
+        commands.setPose(pose),
+        scoreInSpeakerAuto(),
+        driveAndIntake(trajectory, 3, false),
+        scoreInSpeakerAuto());
   }
 
   /** Sets up our auto chooser and auto objects. */
   private void configureAutoRoutines() {
-    autoChooser.addOption("Amp Auto 1", defaultAuto("InitAmpToNote", "AmpToNote1"));
-    autoChooser.addOption("Amp Auto 2", defaultAuto("InitAmpToNote", "AmpToNote2"));
+    autoChooser.addOption(
+        "Amp Auto",
+        defaultAuto(FieldConstants.getInitialPose(FieldConstants.initialAmpSide), "InitAmpToNote"));
+
+    autoChooser.addOption("Center Auto", defaultAuto("InitCenterToNote"));
+    autoChooser.addOption("Load Auto", defaultAuto("InitLoadToNote"));
+
+    autoChooser.addOption(
+        "Amp Auto 1",
+        defaultAuto(
+            FieldConstants.getInitialPose(FieldConstants.initialAmpSide),
+            "InitAmpToNote",
+            "AmpToNote1"));
+
+    autoChooser.addOption(
+        "Amp Auto 2",
+        defaultAuto(
+            FieldConstants.getInitialPose(FieldConstants.initialAmpSide),
+            "InitAmpToNote",
+            "AmpToNote2"));
+
     autoChooser.addOption("Center Auto 1", defaultAuto("InitCenterToNote", "CenterToNote1"));
     autoChooser.addOption("Center Auto 2", defaultAuto("InitCenterToNote", "CenterToNote2"));
     autoChooser.addOption("Center Auto 3", defaultAuto("InitCenterToNote", "CenterToNote3"));
@@ -182,8 +231,8 @@ public class RobotContainer {
         new FeedForwardCharacterization(
             drive, drive::runCharacterization, drive::getCharacterizationVelocity));
 
-    trajectories.forEach(
-        (k, v) -> autoChooser.addOption("Path " + k, new DriveTrajectory(v, true, true, drive)));
+    // trajectories.forEach(
+    //     (k, v) -> autoChooser.addOption("Path " + k, new DriveTrajectory(v, true, true, drive)));
 
     autoChooser.addOption("Just Shoot", commands.scoreInSpeaker());
     autoChooser.addOption("Do Nothing", Commands.none());
@@ -204,18 +253,17 @@ public class RobotContainer {
 
     led.setDefaultCommand(commands.led(LedMode.DEFAULT));
 
-    controllerDriver.x().whileTrue(Commands.run(drive::stopWithX));
+    controllerDriver.x().whileTrue(Commands.run(drive::stopWithX).withName("StopWithX"));
     controllerDriver
         .start()
         .onTrue(
             Commands.runOnce(
                     () -> {
-                      // drive.setPose(new Pose2d(new Translation2d(), new Rotation2d()));
-                      drive.setPose(
-                          new Pose2d(FieldConstants.NoteSpeakerBlue, Rotation2d.fromDegrees(0)));
+                      drive.setPose(new Pose2d(new Translation2d(), new Rotation2d()));
                       drive.reset();
                     })
-                .ignoringDisable(true));
+                .ignoringDisable(true)
+                .withName("ResetOdometry"));
 
     // orientation locks
     controllerDriver
@@ -299,7 +347,7 @@ public class RobotContainer {
                 Commands.runOnce(
                     () -> controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0)));
 
-    new Trigger(() -> shooter.hasGamePiece())
+    new Trigger(() -> shooter.isFrontBeamTripped())
         .onTrue(commands.led(LedMode.ACQUIRED_NOTE).withTimeout(1.5));
 
     new Trigger(() -> intake.isIntaking() && shooter.isFrontBeamTripped())
@@ -338,10 +386,43 @@ public class RobotContainer {
   public void setLoggingIndicator(boolean logging) {
     if (logging) {
       CommandScheduler.getInstance().schedule(commandLedLogging);
-    } else if (aprilTagDetector.areTagsTracked(7, 4, 2)) {
-      CommandScheduler.getInstance().schedule(commandLedTrackingTags);
     } else {
       CommandScheduler.getInstance().schedule(commandLedDisabled);
+    }
+  }
+
+  public void updateVisionTracking() {
+    led.setTracking(aprilTagDetector.areTagsTracked(7, 4, 2));
+  }
+
+  public void logTrackedShootingTarget() {
+    final var timestamp = Timer.getFPGATimestamp();
+    final var state = RobotState.getInstance();
+    final var tag =
+        aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 4 : 7);
+
+    var z = tag.z;
+    var x = tag.x;
+
+    // if we have historical poses, use them to correct the vector
+    // based on the difference between current and historic poses
+    if (state.hasSampledPoses()) {
+      final var poseThen = state.getPoseAtTimestamp(tag.timestamp);
+      final var poseNow = state.getPoseAtTimestamp(timestamp);
+      final var translationThen = poseThen.getTranslation();
+      final var translationNow = poseNow.getTranslation();
+      final var rotationThen = poseThen.getRotation();
+
+      // convert from vision frame of reference to field frame of reference
+      final var fieldTranslation = new Translation2d(-z, x).rotateBy(rotationThen);
+      final var dx = translationNow.getX() - translationThen.getX();
+      final var dy = translationNow.getY() - translationThen.getY();
+
+      // vector to the vision target in field frame of reference
+      final var targetVector =
+          new Translation2d(fieldTranslation.getX() + dx, fieldTranslation.getY() + dy);
+
+      Logger.recordOutput("TrackedShooting/Target", translationNow.plus(targetVector));
     }
   }
 }

@@ -77,6 +77,9 @@ public class Drive extends SubsystemBase {
   private static final LoggedTunableNumber orientationP =
       new LoggedTunableNumber("Drive/Orientation/P", 0.3);
 
+  private static final LoggedTunableNumber steeringP =
+      new LoggedTunableNumber("Drive/Steering/P", 0.3);
+
   // orientation to maintain while lock is in place
   private double orientationLockAngleRad;
   private boolean orientationLockEnabled;
@@ -117,7 +120,7 @@ public class Drive extends SubsystemBase {
     orientationController = new PIDController(orientationP.get(), 0, 0);
     orientationController.enableContinuousInput(-Math.PI, Math.PI);
 
-    steeringController = new PIDController(orientationP.get(), 0, 0);
+    steeringController = new PIDController(steeringP.get(), 0, 0);
     steeringController.enableContinuousInput(-Math.PI, Math.PI);
     steeringController.setSetpoint(0);
 
@@ -263,6 +266,9 @@ public class Drive extends SubsystemBase {
     // update controllers if tunable numbers have changed
     if (orientationP.hasChanged(callerId)) {
       orientationController.setP(orientationP.get());
+    }
+
+    if (steeringP.hasChanged(callerId)) {
       steeringController.setP(orientationP.get());
     }
 

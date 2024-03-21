@@ -20,6 +20,7 @@ public class Led extends SubsystemBase {
   private double periodStart;
   private double periodLast;
   private int periodDiscretization;
+  private boolean isTracking;
 
   /** Pattern that does nothing */
   private static void nop(AddressableLEDBuffer buffer, double t) {}
@@ -110,6 +111,12 @@ public class Led extends SubsystemBase {
     // populate the buffer using pattern implementation
     // and write the buffer to the physical LED strip
     pattern.accept(buffer, Double.valueOf(t));
+
+    // override the buffer portion to convey vision information
+    for (int i = LedConstants.VISION[0]; i <= LedConstants.VISION[1]; ++i) {
+      buffer.setLED(i, isTracking ? Color.kGreen : Color.kRed);
+    }
+
     strip.setData(buffer);
 
     periodLast = timestamp;
@@ -161,6 +168,6 @@ public class Led extends SubsystemBase {
 
   /** Sets indicator of the visual target tracking. */
   public void setTracking(boolean isTracking) {
-    flash(isTracking ? Color.kGreen : Color.kRed, 0.25);
+    this.isTracking = isTracking;
   }
 }

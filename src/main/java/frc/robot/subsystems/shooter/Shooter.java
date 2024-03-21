@@ -15,9 +15,9 @@ public class Shooter extends SubsystemBase {
   private static final LoggedTunableNumber kP  = new LoggedTunableNumber("Shooter/Flywheel P", 0.0002);
   private static final LoggedTunableNumber kI  = new LoggedTunableNumber("Shooter/Flywheel I", 0.0);
   private static final LoggedTunableNumber kD  = new LoggedTunableNumber("Shooter/Flywheel D", 0.0);
-  private static final LoggedTunableNumber kFF = new LoggedTunableNumber("Shooter/Flywheel FF", 0.000183);
+  private static final LoggedTunableNumber kFF = new LoggedTunableNumber("Shooter/Flywheel FF", 0.00020);
   private static final LoggedTunableNumber kS  = new LoggedTunableNumber("Shooter/Flywheel kS", 0.2265);
-  private static final LoggedTunableNumber atSpeedAllowance = new LoggedTunableNumber("Shooter/AtSpeedAllowance", 50);
+  private static final LoggedTunableNumber atSpeedAllowance = new LoggedTunableNumber("Shooter/AtSpeedAllowance", 100);
   // spotless:on
 
   private final SysIdRoutine sysId;
@@ -71,7 +71,7 @@ public class Shooter extends SubsystemBase {
 
   public boolean isAtSpeed(double rpm) {
     return inputs.flywheelVelocity > rpm - atSpeedAllowance.get()
-        && inputs.flywheelVelocity < rpm + atSpeedAllowance.get();
+        && inputs.flywheelVelocity < rpm + atSpeedAllowance.get() * 2;
   }
 
   public boolean hasGamePiece() {
