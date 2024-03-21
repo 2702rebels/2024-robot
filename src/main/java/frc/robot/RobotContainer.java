@@ -172,15 +172,6 @@ public class RobotContainer {
         driveAndIntake(trajectory2, 4, false));
   }
 
-  private Command defaultAuto(Supplier<Pose2d> pose, String trajectory1, String trajectory2) {
-    return Commands.sequence(
-        commands.setPose(pose),
-        scoreInSpeakerAuto(),
-        driveAndIntake(trajectory1, 3, false),
-        scoreInSpeakerAuto(),
-        driveAndIntake(trajectory2, 4, false));
-  }
-
   private Command defaultAuto(String trajectory) {
     return Commands.sequence(
         scoreInSpeakerAuto(), driveAndIntake(trajectory, 3, true), scoreInSpeakerAuto());
@@ -192,6 +183,19 @@ public class RobotContainer {
         scoreInSpeakerAuto(),
         driveAndIntake(trajectory, 3, false),
         scoreInSpeakerAuto());
+  }
+
+  private Command defaultAuto(Supplier<Pose2d> pose, String... trajectories) {
+    final var sequence = new Command[1 + trajectories.length * 2];
+    sequence[0] = commands.setPose(pose);
+    var offset = 1;
+    for (var trajectory : trajectories) {
+      sequence[offset] = scoreInSpeakerAuto();
+      sequence[offset + 1] = driveAndIntake(trajectory, 4, false);
+      offset += 2;
+    }
+
+    return Commands.sequence(sequence);
   }
 
   /** Sets up our auto chooser and auto objects. */
@@ -216,6 +220,15 @@ public class RobotContainer {
             FieldConstants.getInitialPose(FieldConstants.initialAmpSide),
             "InitAmpToNote",
             "AmpToNote2"));
+
+    autoChooser.addOption(
+        "Amp Auto Grand",
+        defaultAuto(
+            FieldConstants.getInitialPose(FieldConstants.initialAmpSide),
+            "InitAmpToNote",
+            "AmpToNote1",
+            "Note1ToShoot1",
+            "Shoot1ToNote2"));
 
     autoChooser.addOption("Center Auto 1", defaultAuto("InitCenterToNote", "CenterToNote1"));
     autoChooser.addOption("Center Auto 2", defaultAuto("InitCenterToNote", "CenterToNote2"));
