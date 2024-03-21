@@ -331,6 +331,9 @@ public class RobotContainer {
     SmartDashboard.putData("Climb/Home", commands.homeHooks());
     SmartDashboard.putData("Climb/Release Ratchet", commands.releaseRatchet());
     SmartDashboard.putData("Climb/Engage Ratchet", commands.engageRatchet());
+    SmartDashboard.putData("Trap/Shoot", commands.trapShot());
+    SmartDashboard.putNumber("Trap/Angle", 59);
+    SmartDashboard.putNumber("Trap/RPM", 2200);
   }
 
   /**

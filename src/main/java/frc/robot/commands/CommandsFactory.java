@@ -2,6 +2,7 @@ package frc.robot.commands;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -150,6 +151,16 @@ public class CommandsFactory {
         .withName("MoveArmToPosition");
   }
 
+  /** Commands pivot arm to position until it arrives there within specified tolerance. */
+  public Command moveArmToPosition(DoubleSupplier angle, double allowance) {
+    return new FunctionalCommand(
+        () -> pivot.setRequestedAngle(angle.getAsDouble()),
+        () -> {},
+        interupted -> {},
+        () -> pivot.isAtGoal(allowance),
+        pivot);
+  }
+
   /** Commands pivot arm to position until it arrives there within the default tolerance. */
   public Command moveArmToPosition(double angle) {
     return new FunctionalCommand(
@@ -182,6 +193,19 @@ public class CommandsFactory {
             () -> false,
             shooter)
         .withName("shoot");
+  }
+
+  public Command shoot(DoubleSupplier rpm, BooleanSupplier ready) {
+    return new FunctionalCommand(
+        () -> shooter.setSpeed(rpm.getAsDouble()),
+        () -> {
+          if (shooter.isAtSpeed(rpm.getAsDouble()) && ready.getAsBoolean()) {
+            shooter.feedOut();
+          }
+        },
+        (interupted) -> shooter.stop(),
+        () -> false,
+        shooter);
   }
 
   /** Commands shooter to start feeding the game piece until the front beam is tripped. */
@@ -281,5 +305,11 @@ public class CommandsFactory {
   /** Resets pose. */
   public Command setPose(Supplier<Pose2d> pose) {
     return Commands.runOnce(() -> drive.setPose(pose.get()), drive);
+  }
+
+  public Command trapShot() {
+    return moveArmToPosition(() -> SmartDashboard.getNumber("Trap/Angle", 59), 1)
+        .alongWith(shoot(() -> SmartDashboard.getNumber("Trap/RPM", 2200), () -> pivot.isAtGoal()))
+        .until(() -> !shooter.hasGamePiece());
   }
 }
