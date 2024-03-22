@@ -13,8 +13,13 @@ import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.vision.AprilTag;
 import frc.robot.subsystems.vision.AprilTagDetector;
 import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.LoggedDashboardBoolean;
 
 public class ScoreInSpeaker extends Command {
+  // spotless:off
+  private static final LoggedDashboardBoolean disableOdometryHistory = new LoggedDashboardBoolean("Score/DisableOdometryHistory", false);
+  // spotless:on
+
   private final Drive drive;
   private final Shooter shooter;
   private final Pivot pivot;
@@ -76,6 +81,9 @@ public class ScoreInSpeaker extends Command {
       z = -t.getX();
     }
 
+    // fudge factors:
+    // -2.3m -- target height over ground
+    // +0.1m -- extend target position into the goal to improve accuracy
     final var pivotAngle = Math.toDegrees(Math.atan2(-2.3, z + 0.1));
     Logger.recordOutput("TrackedShooting/PivotAngle", pivotAngle);
 
@@ -87,7 +95,9 @@ public class ScoreInSpeaker extends Command {
 
     // consider tag acquired if we see one or we have seen it within the last 2 seconds
     // so that we can use recent odometry compensation to steer us towards it
-    final var targetAcquired = tag.tracked || (timestamp - tag.timestamp) < 2;
+    final var targetAcquired =
+        tag.tracked || (timestamp - tag.timestamp) < 2 && !disableOdometryHistory.get();
+
     if (targetAcquired) {
       drive.steeringLock(turnAngle);
 
