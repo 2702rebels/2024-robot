@@ -8,7 +8,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -52,7 +51,6 @@ import frc.robot.util.TrajectoryLoader;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
@@ -408,37 +406,8 @@ public class RobotContainer {
   }
 
   public void updateVisionTracking() {
-    led.setTracking(aprilTagDetector.areTagsTracked(7, 4, 2));
-  }
-
-  public void logTrackedShootingTarget() {
-    final var timestamp = Timer.getFPGATimestamp();
-    final var state = RobotState.getInstance();
-    final var tag =
-        aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 4 : 7);
-
-    var z = tag.z;
-    var x = tag.x;
-
-    // if we have historical poses, use them to correct the vector
-    // based on the difference between current and historic poses
-    if (state.hasSampledPoses()) {
-      final var poseThen = state.getPoseAtTimestamp(tag.timestamp);
-      final var poseNow = state.getPoseAtTimestamp(timestamp);
-      final var translationThen = poseThen.getTranslation();
-      final var translationNow = poseNow.getTranslation();
-      final var rotationThen = poseThen.getRotation();
-
-      // convert from vision frame of reference to field frame of reference
-      final var fieldTranslation = new Translation2d(-z, x).rotateBy(rotationThen);
-      final var dx = translationNow.getX() - translationThen.getX();
-      final var dy = translationNow.getY() - translationThen.getY();
-
-      // vector to the vision target in field frame of reference
-      final var targetVector =
-          new Translation2d(fieldTranslation.getX() + dx, fieldTranslation.getY() + dy);
-
-      Logger.recordOutput("TrackedShooting/Target", translationNow.plus(targetVector));
-    }
+    final var tracking = aprilTagDetector.areTagsTracked(7, 4, 2);
+    RobotState.getInstance().setTrackingTags(tracking);
+    led.setTracking(tracking);
   }
 }

@@ -52,8 +52,8 @@ public class ScoreInSpeaker extends Command {
     // if we have historical poses, use them to correct the vector
     // based on the difference between current and historic poses
     if (state.hasSampledPoses()) {
-      final var poseThen = state.getPoseAtTimestamp(tag.timestamp);
-      final var poseNow = state.getPoseAtTimestamp(timestamp);
+      final var poseThen = state.findPoseAt(tag.timestamp);
+      final var poseNow = state.findPoseAt(timestamp);
       final var translationThen = poseThen.getTranslation();
       final var translationNow = poseNow.getTranslation();
       final var rotationThen = poseThen.getRotation();

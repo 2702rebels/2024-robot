@@ -34,6 +34,9 @@ public class RobotState {
   private Pose2d odometryPose = new Pose2d();
   private Pose2d estimatedPose = new Pose2d();
 
+  // indicates that tags are being tracked
+  private boolean isTrackingTags = false;
+
   private static final double poseBufferSizeSeconds = 2.0;
   private final TimeInterpolatableBuffer<Pose2d> poseBuffer =
       TimeInterpolatableBuffer.createBuffer(poseBufferSizeSeconds);
@@ -165,13 +168,19 @@ public class RobotState {
     return prevWheelPositions;
   }
 
-  /** Returns the robot pose observed at the specified timestamp. */
-  public Pose2d getPoseAtTimestamp(double timestmap) {
-    return highFrequencySampledPoses.findAt(timestmap);
-  }
-
   /** Determines whether we have any sampled poses. */
   public boolean hasSampledPoses() {
     return highFrequencySampledPoses.size() > 0;
+  }
+
+  /** Updates tags tracking status. */
+  public void setTrackingTags(boolean value) {
+    isTrackingTags = value;
+  }
+
+  /** Determines whether tags are being tracked. */
+  @AutoLogOutput(key = "Odometry/TagsTracking")
+  public boolean isTrackingTags() {
+    return this.isTrackingTags;
   }
 }

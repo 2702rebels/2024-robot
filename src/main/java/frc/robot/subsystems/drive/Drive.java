@@ -302,9 +302,18 @@ public class Drive extends SubsystemBase {
     // if steering adjustment is provided we override commanded omega
     // with the one compute based on the steering controller PID output
     if (steeringTurnAngleRadians.isPresent()) {
-      speeds.omegaRadiansPerSecond =
-          steeringController.calculate(steeringTurnAngleRadians.getAsDouble(), 0)
-              * getMaxAngularSpeedRadPerSec();
+      // if we have teleop input on rotation and do not see the tag,
+      // then do not override anything
+      final var skipOverride =
+          DriverStation.isTeleopEnabled()
+              && !Misc.epsilonEquals(speeds.omegaRadiansPerSecond, 0)
+              && !RobotState.getInstance().isTrackingTags();
+
+      if (!skipOverride) {
+        speeds.omegaRadiansPerSecond =
+            steeringController.calculate(steeringTurnAngleRadians.getAsDouble(), 0)
+                * getMaxAngularSpeedRadPerSec();
+      }
     }
 
     // if all commanded velocities are effectively zero and
