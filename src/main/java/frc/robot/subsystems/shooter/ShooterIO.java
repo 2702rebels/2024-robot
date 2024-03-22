@@ -33,6 +33,9 @@ public interface ShooterIO {
   /** Sets the target speed for the flywheel PID. */
   public default void setFlywheelSpeed(double rpm) {}
 
+  /** Sets the target output for the flywheel motor. */
+  public default void setFlywheelPercentOutput(double percent) {}
+
   /** Stops the flywheel motor(s). */
   public default void stopFlywheel() {}
 

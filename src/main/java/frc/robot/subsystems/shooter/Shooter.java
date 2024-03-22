@@ -18,6 +18,7 @@ public class Shooter extends SubsystemBase {
   private static final LoggedTunableNumber kFF = new LoggedTunableNumber("Shooter/Flywheel FF", 0.00020);
   private static final LoggedTunableNumber kS  = new LoggedTunableNumber("Shooter/Flywheel kS", 0.2265);
   private static final LoggedTunableNumber atSpeedAllowance = new LoggedTunableNumber("Shooter/AtSpeedAllowance", 100);
+  private static final LoggedTunableNumber reverseSpeed = new LoggedTunableNumber("Shooter/Reverse Speed", -0.2);
   // spotless:on
 
   private final SysIdRoutine sysId;
@@ -125,5 +126,10 @@ public class Shooter extends SubsystemBase {
   /** Enables or disables brake mode on the flywheel. */
   public void setFlywheelBrakeMode(boolean enable) {
     io.setFlywheelBrakeMode(enable);
+  }
+
+  /** Runs flywheel in reverse to keep notes from popping out. */
+  public void reverseFlywheel() {
+    io.setFlywheelPercentOutput(reverseSpeed.get());
   }
 }

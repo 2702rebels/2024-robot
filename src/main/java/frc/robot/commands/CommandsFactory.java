@@ -2,6 +2,7 @@ package frc.robot.commands;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -125,12 +126,19 @@ public class CommandsFactory {
               intake.start();
               pivot.setRequestedAngle(90);
               shooter.feedForward();
+              if (DriverStation.isAutonomous()) {
+                shooter.reverseFlywheel();
+              }
             },
             () -> {},
             interrupted -> {
               intake.stop();
               pivot.setRequestedAngle(20);
-              shooter.stopFeed();
+              if (DriverStation.isAutonomous()) {
+                shooter.stop();
+              } else {
+                shooter.stopFeed();
+              }
             },
             shooter::isFrontBeamTripped,
             intake,

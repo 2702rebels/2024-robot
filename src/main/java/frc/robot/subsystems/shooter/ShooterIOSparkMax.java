@@ -150,6 +150,11 @@ public class ShooterIOSparkMax implements ShooterIO {
   }
 
   @Override
+  public void setFlywheelPercentOutput(double percent) {
+    flywheelMotor.set(percent);
+  }
+
+  @Override
   public void stopFlywheel() {
     flywheelMotor.stopMotor();
   }
