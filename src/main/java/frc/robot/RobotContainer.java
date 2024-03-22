@@ -314,14 +314,24 @@ public class RobotContainer {
         .onFalse(commands.moveArmToPosition(20, 2));
 
     // amp shot
+    // controllerDriver
+    //     .a()
+    //     .onTrue(
+    //         Commands.parallel(
+    //                 commands.moveArmToPosition(107, 5),
+    //                 commands.shoot(900, pivot::isAtGoal).until(() -> !shooter.hasGamePiece()))
+    //             .andThen(commands.moveArmToPosition(20, 3))
+    //             .deadlineWith(commands.led(LedMode.AMP)));
+
     controllerDriver
         .a()
         .onTrue(
             Commands.parallel(
-                    commands.moveArmToPosition(107, 5),
-                    commands.shoot(900, pivot::isAtGoal).until(() -> !shooter.hasGamePiece()))
-                .andThen(commands.moveArmToPosition(20, 3))
-                .deadlineWith(commands.led(LedMode.AMP)));
+                    Commands.runOnce(() -> shooter.setSpeed(900), shooter)
+                        .alongWith(commands.moveArmToPosition(90, 3)))
+                .andThen(
+                    Commands.runOnce(() -> shooter.feedForward(), shooter)
+                        .alongWith(commands.moveArmToPosition(107))));
 
     // move to idle
     controllerDriver
