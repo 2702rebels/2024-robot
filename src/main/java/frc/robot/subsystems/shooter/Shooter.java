@@ -90,6 +90,10 @@ public class Shooter extends SubsystemBase {
     return feeding;
   }
 
+  public boolean isFeedLive() {
+    return inputs.feedVelocity >= 1000;
+  }
+
   public void setSpeed(double speed) {
     io.setFlywheelSpeed(speed);
   }
@@ -116,5 +120,10 @@ public class Shooter extends SubsystemBase {
   public void stop() {
     io.stopFeed();
     io.stopFlywheel();
+  }
+
+  /** Enables or disables brake mode on the flywheel. */
+  public void setFlywheelBrakeMode(boolean enable) {
+    io.setFlywheelBrakeMode(enable);
   }
 }
