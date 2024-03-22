@@ -117,6 +117,12 @@ public class Led extends SubsystemBase {
       buffer.setLED(i, isTracking ? Color.kGreen : Color.kRed);
     }
 
+    for (int i = LedConstants.VISION_SHOOTER_SIDE[0];
+        i <= LedConstants.VISION_SHOOTER_SIDE[1];
+        i++) {
+      buffer.setLED(i, isTracking ? Color.kGreen : Color.kRed);
+    }
+
     strip.setData(buffer);
 
     periodLast = timestamp;

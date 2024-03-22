@@ -300,7 +300,9 @@ public class RobotContainer {
     controllerDriver.y().whileTrue(commands.eject());
 
     // speaker shot
-    controllerDriver.rightTrigger().whileTrue(commands.scoreInSpeaker());
+    controllerDriver
+        .rightTrigger()
+        .whileTrue(commands.scoreInSpeaker().alongWith(commands.led(LedMode.SPEAKER)));
 
     // subwoofer shot
     controllerDriver
@@ -362,10 +364,11 @@ public class RobotContainer {
                     () -> controllerDriver.getHID().setRumble(RumbleType.kBothRumble, 0.0)));
 
     new Trigger(() -> shooter.isFrontBeamTripped())
-        .onTrue(commands.led(LedMode.ACQUIRED_NOTE).withTimeout(1.5));
-
-    new Trigger(() -> intake.isIntaking() && shooter.isFrontBeamTripped())
-        .onTrue(controllerRumbleCommandFactory.apply(0.3));
+        .onTrue(
+            commands
+                .led(LedMode.ACQUIRED_NOTE)
+                .withTimeout(1.0)
+                .alongWith(controllerRumbleCommandFactory.apply(0.3)));
 
     new Trigger(
             () ->

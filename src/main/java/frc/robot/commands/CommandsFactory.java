@@ -74,6 +74,8 @@ public class CommandsFactory {
     ACQUIRED_NOTE,
     /** Acquired AprilTags via vision */
     TRACKING_TAGS,
+
+    SPEAKER,
   }
 
   /** Returns lambda that implements the mode. */
@@ -89,6 +91,8 @@ public class CommandsFactory {
         return () -> led.flash(Color.kOrange, 0.25);
       case TRACKING_TAGS:
         return () -> led.random(Misc.toHSV(Color.kGreen), 2.5, 10);
+      case SPEAKER:
+        return () -> led.flash(Color.kRed, 0.25);
       default:
         return () -> led.breath(Color.kRed, 3);
     }
