@@ -239,7 +239,10 @@ public class CommandsFactory {
               climb.home();
             },
             () -> {},
-            interrupted -> climb.stop(),
+            interrupted -> {
+              climb.setHome();
+              climb.stop();
+            },
             () -> climb.isLimitSwitchClosed(),
             climb)
         .withName("HomeHooks");

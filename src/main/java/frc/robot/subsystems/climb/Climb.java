@@ -21,7 +21,7 @@ public class Climb extends SubsystemBase {
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("Climb/Motor D", 0.0);
   // spotless:on
 
-  private boolean isHomed;
+  private boolean isHomed = false;
   private double desiredPosition;
 
   public Climb(ClimbIO io) {
@@ -39,12 +39,6 @@ public class Climb extends SubsystemBase {
     if (kP.hasChanged(callerId) || kI.hasChanged(callerId) || kD.hasChanged(callerId)) {
       System.out.println("[Climb] Motor PID parameters have changed. Reconfiguring them.");
       io.configurePID(kP.get(), kI.get(), kD.get());
-    }
-
-    // re-zero position when limit switch closes
-    if (isLimitSwitchClosed()) {
-      io.zeroEncoder();
-      isHomed = true;
     }
   }
 
@@ -115,5 +109,14 @@ public class Climb extends SubsystemBase {
     // note different kP here when raising hooks
     io.configurePID(kP.get() / 4, kI.get(), kD.get());
     io.setPosition(hookRaisedPosition.get());
+  }
+
+  /** Sets homed indicator and zeroes encoder if the limit switch is closed. */
+  public void setHome() {
+    // re-zero position when limit switch closes
+    if (isLimitSwitchClosed()) {
+      io.zeroEncoder();
+      isHomed = true;
+    }
   }
 }
