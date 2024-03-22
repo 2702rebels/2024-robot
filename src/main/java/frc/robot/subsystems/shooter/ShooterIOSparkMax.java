@@ -179,6 +179,12 @@ public class ShooterIOSparkMax implements ShooterIO {
   }
 
   @Override
+  public void setFlywheelBrakeMode(boolean enable) {
+    flywheelMotor.setIdleMode(enable ? IdleMode.kBrake : IdleMode.kCoast);
+    followerMotor.setIdleMode(enable ? IdleMode.kBrake : IdleMode.kCoast);
+  }
+
+  @Override
   public void setFeedBrakeMode(boolean enable) {
     feedMotor.setIdleMode(enable ? IdleMode.kBrake : IdleMode.kCoast);
   }

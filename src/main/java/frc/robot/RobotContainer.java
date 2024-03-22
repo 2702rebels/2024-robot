@@ -414,4 +414,14 @@ public class RobotContainer {
     RobotState.getInstance().setTrackingTags(tracking);
     led.setTracking(tracking);
   }
+
+  public void onAutoInit() {
+    // start shooter with flywheel in break mode to use in autonomous
+    // as a fix for notes popping right through the shooter during intake
+    shooter.setFlywheelBrakeMode(true);
+  }
+
+  public void onTeleopInit() {
+    shooter.setFlywheelBrakeMode(false);
+  }
 }

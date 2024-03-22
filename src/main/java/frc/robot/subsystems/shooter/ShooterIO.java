@@ -45,7 +45,10 @@ public interface ShooterIO {
   /** Sets the target output for the feed motor. */
   public default void setFeedPercentOutput(double percent) {}
 
-  /** Enables or Disables brake mode on the feed. */
+  /** Enables or disables brake mode on the flywheel. */
+  public default void setFlywheelBrakeMode(boolean enable) {}
+
+  /** Enables or disables brake mode on the feed. */
   public default void setFeedBrakeMode(boolean enable) {}
 
   /** Stops the feed motor. */

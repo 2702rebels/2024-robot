@@ -117,6 +117,8 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void autonomousInit() {
+    robotContainer.onAutoInit();
+
     autonomousCommand = robotContainer.getAutonomousCommand();
     isLogging.set(true);
 
@@ -133,6 +135,8 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void teleopInit() {
+    robotContainer.onTeleopInit();
+
     if (autonomousCommand != null) {
       autonomousCommand.cancel();
     }
