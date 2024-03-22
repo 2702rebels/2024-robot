@@ -264,7 +264,7 @@ public class RobotContainer {
 
     led.setDefaultCommand(commands.led(LedMode.DEFAULT));
 
-    controllerDriver.x().whileTrue(Commands.run(drive::stopWithX).withName("StopWithX"));
+    // controllerDriver.x().whileTrue(Commands.run(drive::stopWithX).withName("StopWithX"));
     controllerDriver
         .start()
         .onTrue(
@@ -336,7 +336,8 @@ public class RobotContainer {
     controllerDriver.povUp().onTrue(commands.raiseHooks());
     controllerDriver.back().onTrue(commands.retractHooks());
 
-    controllerDriver.povRight().onTrue(commands.wheelDiameterCharacterization());
+    // controllerDriver.povRight().onTrue(commands.wheelDiameterCharacterization());
+    controllerDriver.x().onTrue(commands.pass());
   }
 
   /** Use this method to put commands on the SmartDashboard. */

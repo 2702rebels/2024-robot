@@ -316,4 +316,10 @@ public class CommandsFactory {
         .alongWith(shoot(() -> SmartDashboard.getNumber("Trap/RPM", 2200), () -> pivot.isAtGoal()))
         .until(() -> !shooter.hasGamePiece());
   }
+
+  public Command pass() {
+    return moveArmToPosition(20)
+        .alongWith(shoot(1000, () -> true))
+        .until(() -> !shooter.hasGamePiece());
+  }
 }
