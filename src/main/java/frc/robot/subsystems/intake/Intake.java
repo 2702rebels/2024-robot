@@ -1,5 +1,6 @@
 package frc.robot.subsystems.intake;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
@@ -10,6 +11,7 @@ public class Intake extends SubsystemBase {
 
   // spotless:off
   private static final LoggedTunableNumber intakeSpeed = new LoggedTunableNumber("Intake/Speed", 0.7);
+  private static final LoggedTunableNumber intakeSpeedAuto = new LoggedTunableNumber("Intake/Speed Auto", 0.5);
   // spotless:on
 
   private boolean intaking = false;
@@ -25,7 +27,7 @@ public class Intake extends SubsystemBase {
   }
 
   public void start() {
-    io.setSpeed(intakeSpeed.get());
+    io.setSpeed(DriverStation.isAutonomous() ? intakeSpeedAuto.get() : intakeSpeed.get());
     intaking = true;
   }
 
