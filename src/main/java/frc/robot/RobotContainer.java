@@ -327,11 +327,16 @@ public class RobotContainer {
         .a()
         .onTrue(
             Commands.parallel(
-                    Commands.runOnce(() -> shooter.setSpeed(900), shooter)
+                    Commands.runOnce(() -> shooter.setSpeed(800), shooter)
                         .alongWith(commands.moveArmToPosition(90, 3)))
                 .andThen(
                     Commands.runOnce(() -> shooter.feedForward(), shooter)
-                        .alongWith(commands.moveArmToPosition(107))));
+                        .alongWith(commands.moveArmToPosition(107)))
+                .andThen(
+                    commands
+                        .moveArmToPosition(20)
+                        .alongWith(Commands.runOnce(() -> shooter.stop(), shooter)))
+                .deadlineWith(commands.led((LedMode.AMP))));
 
     // move to idle
     controllerDriver
