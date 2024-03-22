@@ -13,7 +13,7 @@ public class Climb extends SubsystemBase {
   private static final LoggedTunableNumber ratchetOnAngle = new LoggedTunableNumber("Climb/Ratchet On Angle", 0);
   private static final LoggedTunableNumber ratchetOffAngle = new LoggedTunableNumber("Climb/Ratchet Off Angle", 80);
   private static final LoggedTunableNumber hookRaisedPosition = new LoggedTunableNumber("Climb/Hook Raised Position", 55);
-  private static final LoggedTunableNumber hookRetractedPosition = new LoggedTunableNumber("Climb/Hook Retracted Position", 20);
+  private static final LoggedTunableNumber hookRetractedPosition = new LoggedTunableNumber("Climb/Hook Retracted Position", 10);
   private static final LoggedTunableNumber homeSpeed = new LoggedTunableNumber("Climb/Home Speed", -0.2);
   private static final LoggedTunableNumber tolerance = new LoggedTunableNumber("Climb/Tolerance", 2.0);
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Climb/Motor P", 0.1);
