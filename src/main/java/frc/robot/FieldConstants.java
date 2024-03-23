@@ -22,4 +22,9 @@ public final class FieldConstants {
     new Pose2d(1.3, 7.02, Rotation2d.fromDegrees(45)), // blue
     new Pose2d(15.25, 7.02, Rotation2d.fromDegrees(135)) // red
   };
+
+  public static final Pose2d[] initialSourceSide = {
+    new Pose2d(0.87, 4.0, Rotation2d.fromDegrees(300)), // blue
+    new Pose2d(15.7, 4.0, Rotation2d.fromDegrees(240)) // red
+  };
 }

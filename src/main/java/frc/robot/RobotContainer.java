@@ -156,6 +156,11 @@ public class RobotContainer {
         .withTimeout(timeoutSeconds);
   }
 
+  private Command driveTraj(String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), resetOdometry, true, drive)
+        .withTimeout(timeoutSeconds);
+  }
+
   /** Creates a wrapper with timeout for safety during auto. */
   private Command scoreInSpeakerAuto() {
     return commands.scoreInSpeaker().withTimeout(3);
@@ -196,6 +201,15 @@ public class RobotContainer {
     return Commands.sequence(sequence);
   }
 
+  private Command waterlooAuto(Supplier<Pose2d> pose, String... trajectories) {
+    return Commands.sequence(
+        commands.setPose(pose),
+        scoreInSpeakerAuto(),
+        driveAndIntake(trajectories[0], 4, false),
+        driveTraj(trajectories[1], 3, false),
+        scoreInSpeakerAuto());
+  }
+
   /** Sets up our auto chooser and auto objects. */
   private void configureAutoRoutines() {
     autoChooser.addOption(
@@ -227,6 +241,13 @@ public class RobotContainer {
             "AmpToNote1",
             "Note1ToShoot1",
             "Shoot1ToNote2"));
+
+    autoChooser.addOption(
+        "Wateroo Auto",
+        waterlooAuto(
+            FieldConstants.getInitialPose(FieldConstants.initialSourceSide),
+            "WaterlooPath1",
+            "WaterlooPath2"));
 
     autoChooser.addOption("Center Auto 1", defaultAuto("InitCenterToNote", "CenterToNote1"));
     autoChooser.addOption("Center Auto 2", defaultAuto("InitCenterToNote", "CenterToNote2"));
