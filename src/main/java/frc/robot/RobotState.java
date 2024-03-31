@@ -6,6 +6,8 @@ import edu.wpi.first.math.interpolation.TimeInterpolatableBuffer;
 import edu.wpi.first.math.kinematics.Kinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveWheelPositions;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.util.TimestampedCircularBuffer;
 import org.littletonrobotics.junction.AutoLogOutput;
@@ -182,5 +184,18 @@ public class RobotState {
   @AutoLogOutput(key = "Odometry/TagsTracking")
   public boolean isTrackingTags() {
     return this.isTrackingTags;
+  }
+
+  /** Determines whether robot is over the center line based on estimated pose. */
+  public boolean isOverCenterLine() {
+    final var red =
+        DriverStation.getAlliance().isPresent()
+            && DriverStation.getAlliance().get() == Alliance.Red;
+
+    final var x = getEstimatedPose().getTranslation().getX();
+    final var r = DriveConstants.drivetrainConfig.driveBaseRadius();
+    final var cx = FieldConstants.fieldLengthMeters / 2;
+
+    return red ? x <= (cx - r) : x >= (cx + r);
   }
 }

@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.CommandsFactory;
 import frc.robot.commands.CommandsFactory.LedMode;
+import frc.robot.commands.DriveToNoteNaive;
 import frc.robot.commands.DriveTrajectory;
 import frc.robot.commands.FeedForwardCharacterization;
 import frc.robot.subsystems.climb.Climb;
@@ -149,10 +150,23 @@ public class RobotContainer {
    * acquired.
    */
   private Command driveAndIntake(
-      String trajectoryName, double timeoutSeconds, boolean ResetOdometry) {
-    return new DriveTrajectory(trajectories.get(trajectoryName), ResetOdometry, true, drive)
+      String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), resetOdometry, true, drive)
         .until(shooter::isFrontBeamTripped)
         .alongWith(commands.intake())
+        .withTimeout(timeoutSeconds);
+  }
+
+  /**
+   * Creates new command that drives specified trajectory then attempts to locate the note with
+   * vision and drives towards it with intake running until game piece is acquired.
+   */
+  private Command driveThenIntake(
+      String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), resetOdometry, true, drive)
+        .andThen(
+            new DriveToNoteNaive(drive, noteDetector, intake, shooter)
+                .deadlineWith(commands.intake()))
         .withTimeout(timeoutSeconds);
   }
 
@@ -254,6 +268,19 @@ public class RobotContainer {
     autoChooser.addOption("Center Auto 3", defaultAuto("InitCenterToNote", "CenterToNote3"));
     autoChooser.addOption("Center Auto 4", defaultAuto("InitCenterToNote", "CenterToNote4"));
     autoChooser.addOption("Load Auto 5", defaultAuto("InitLoadToNote", "StageToNote5"));
+
+    autoChooser.addOption(
+        "Three Notes Center",
+        Commands.sequence(
+            commands.setPose(FieldConstants.getInitialPose(FieldConstants.initialSourceSide)),
+            // scoreInSpeakerAuto(),
+            driveThenIntake("C_N1", 3, false),
+            scoreInSpeakerAuto(),
+            driveThenIntake("N1_N2", 3, false),
+            scoreInSpeakerAuto(),
+            driveThenIntake("N2_N3", 3, false)
+            // scoreInSpeakerAuto(),
+            ));
 
     autoChooser.addOption(
         "Wheel Diameter Characterization", commands.wheelDiameterCharacterization());
