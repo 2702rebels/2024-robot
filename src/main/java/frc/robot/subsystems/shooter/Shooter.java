@@ -87,8 +87,7 @@ public class Shooter extends SubsystemBase {
   }
 
   public boolean hasGamePiece() {
-    // TOOD: beam break back is broken
-    return inputs.beamBreakFront; // || inputs.beamBreakBack;
+    return inputs.beamBreakFront || inputs.beamBreakBack;
   }
 
   public boolean isFrontBeamTripped() {
