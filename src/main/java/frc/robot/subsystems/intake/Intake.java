@@ -10,8 +10,8 @@ public class Intake extends SubsystemBase {
   private final IntakeIOInputsAutoLogged inputs = new IntakeIOInputsAutoLogged();
 
   // spotless:off
-  private static final LoggedTunableNumber intakeSpeed = new LoggedTunableNumber("Intake/Speed", 0.7);
-  private static final LoggedTunableNumber intakeSpeedAuto = new LoggedTunableNumber("Intake/Speed Auto", 0.5);
+  private static final LoggedTunableNumber intakeSpeed = new LoggedTunableNumber("Intake/Speed", 1.0);
+  private static final LoggedTunableNumber intakeSpeedAuto = new LoggedTunableNumber("Intake/Speed Auto", 1.0);
   // spotless:on
 
   private boolean intaking = false;

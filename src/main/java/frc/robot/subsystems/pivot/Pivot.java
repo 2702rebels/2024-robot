@@ -81,7 +81,7 @@ public class Pivot extends SubsystemBase {
     state.position = inputs.measuredPositionRadians;
     state.velocity = inputs.measuredVelocityRadiansPerSecond;
 
-    // this calulate method is doing at least two new allocations... :(
+    // this calculate method is doing at least two new allocations... :(
     state = trapezoidProfile.calculate(Constants.cyclePeriodSeconds, state, goal);
     final var ff = armFeedforward.calculate(state.position, state.velocity);
 

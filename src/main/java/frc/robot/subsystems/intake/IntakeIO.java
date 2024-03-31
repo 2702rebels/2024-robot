@@ -6,6 +6,7 @@ public interface IntakeIO {
   @AutoLog
   public static class IntakeIOInputs {
     public double velocityRPM = 0.0;
+    public double temperature = 0.0;
     public double appliedVolts = 0.0;
     public double currentAmps = 0.0;
     public boolean beamBreak = false;
