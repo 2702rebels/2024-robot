@@ -10,7 +10,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.StartEndCommand;
-import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.subsystems.climb.Climb;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
@@ -128,6 +127,11 @@ public class CommandsFactory {
               shooter.feedForward();
               if (DriverStation.isAutonomous()) {
                 shooter.reverseFlywheel();
+
+                // stop feeding once note is far enough into the shooter
+                if (shooter.isFrontBeamTripped()) {
+                  shooter.stopFeed();
+                }
               }
             },
             () -> {},
@@ -140,7 +144,7 @@ public class CommandsFactory {
                 shooter.stopFeed();
               }
             },
-            shooter::isFrontBeamTripped,
+            shooter::isFrontBeamTrippedAndTimeout,
             intake,
             pivot,
             shooter)
@@ -293,7 +297,7 @@ public class CommandsFactory {
                 climb)
             .withName("RaiseClimb");
 
-    return Commands.either(relax.andThen(new WaitCommand(0.25)), homeHooks(), climb::isHomed)
+    return Commands.either(relax.andThen(Commands.waitSeconds(0.25)), homeHooks(), climb::isHomed)
         .andThen(raise)
         .withName("RaiseHooks");
   }

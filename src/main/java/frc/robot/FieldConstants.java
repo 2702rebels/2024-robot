@@ -31,6 +31,9 @@ public final class FieldConstants {
   public static final Pose2d initialAmpSide =
       new Pose2d(1.3, 7.02, Rotation2d.fromDegrees(45)); // blue
 
+  public static final Pose2d initialCenterSide =
+      new Pose2d(1.383, 5.576, Rotation2d.fromDegrees(0)); // blue
+
   public static final Pose2d initialSourceSide =
       new Pose2d(1.3, 4.1, Rotation2d.fromDegrees(-45)); // blue
 }

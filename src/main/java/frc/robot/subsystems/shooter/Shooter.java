@@ -1,10 +1,12 @@
 package frc.robot.subsystems.shooter;
 
 import edu.wpi.first.units.Units;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.util.LoggedTunableNumber;
+import java.util.OptionalDouble;
 import org.littletonrobotics.junction.Logger;
 
 public class Shooter extends SubsystemBase {
@@ -23,6 +25,7 @@ public class Shooter extends SubsystemBase {
 
   private final SysIdRoutine sysId;
   private boolean feeding = false;
+  private OptionalDouble frontBeamTrippedAt = OptionalDouble.empty();
 
   public Shooter(ShooterIO io) {
     this.io = io;
@@ -53,6 +56,14 @@ public class Shooter extends SubsystemBase {
           "[Shooter] Flywheel velocity PID parameters have changed. Reconfiguring them.");
       io.configureFlywheelPID(kP.get(), kI.get(), kD.get(), kFF.get(), kS.get());
     }
+
+    if (isFrontBeamTripped() && frontBeamTrippedAt.isEmpty()) {
+      frontBeamTrippedAt = OptionalDouble.of(Timer.getFPGATimestamp());
+    }
+
+    if (!isFrontBeamTripped() && frontBeamTrippedAt.isPresent()) {
+      frontBeamTrippedAt = OptionalDouble.empty();
+    }
   }
 
   /** Runs the open loop at the specified voltage. */
@@ -76,11 +87,19 @@ public class Shooter extends SubsystemBase {
   }
 
   public boolean hasGamePiece() {
-    return inputs.beamBreakFront || inputs.beamBreakBack;
+    // TOOD: beam break back is broken
+    return inputs.beamBreakFront; // || inputs.beamBreakBack;
   }
 
   public boolean isFrontBeamTripped() {
     return inputs.beamBreakFront;
+  }
+
+  public boolean isFrontBeamTrippedAndTimeout() {
+    final var timestamp = Timer.getFPGATimestamp();
+    return isFrontBeamTripped()
+        && frontBeamTrippedAt.isPresent()
+        && (timestamp - frontBeamTrippedAt.getAsDouble()) > 0.08;
   }
 
   public boolean isBackBeamTripped() {

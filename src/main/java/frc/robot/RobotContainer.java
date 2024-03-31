@@ -164,13 +164,15 @@ public class RobotContainer {
   private Command driveThenIntake(
       String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
     return new DriveTrajectory(trajectories.get(trajectoryName), resetOdometry, true, drive)
+        .andThen(Commands.waitSeconds(0.06)) // note detection vision has a perceived lag of 60ms
         .andThen(
             new DriveToNoteNaive(drive, noteDetector, intake, shooter)
                 .deadlineWith(commands.intake()))
         .withTimeout(timeoutSeconds);
   }
 
-  private Command driveTraj(String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
+  private Command driveTrajectory(
+      String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
     return new DriveTrajectory(trajectories.get(trajectoryName), resetOdometry, true, drive)
         .withTimeout(timeoutSeconds);
   }
@@ -220,7 +222,7 @@ public class RobotContainer {
         commands.setPose(pose),
         scoreInSpeakerAuto(),
         driveAndIntake(trajectories[0], 4, false),
-        driveTraj(trajectories[1], 3, false),
+        driveTrajectory(trajectories[1], 3, false),
         scoreInSpeakerAuto());
   }
 
@@ -272,15 +274,26 @@ public class RobotContainer {
     autoChooser.addOption(
         "Three Notes Center",
         Commands.sequence(
-            commands.setPose(FieldConstants.getInitialPose(FieldConstants.initialSourceSide)),
-            // scoreInSpeakerAuto(),
-            driveThenIntake("C_N1", 3, false),
+            commands.setPose(FieldConstants.getInitialPose(FieldConstants.initialCenterSide)),
             scoreInSpeakerAuto(),
-            driveThenIntake("N1_N2", 3, false),
+            driveThenIntake("C_N1", 4, false),
             scoreInSpeakerAuto(),
-            driveThenIntake("N2_N3", 3, false)
-            // scoreInSpeakerAuto(),
-            ));
+            driveThenIntake("N1_N2", 4, false),
+            scoreInSpeakerAuto(),
+            driveThenIntake("N2_N3", 4, false),
+            scoreInSpeakerAuto()));
+
+    autoChooser.addOption(
+        "N1-CN2 Center",
+        Commands.sequence(
+                commands.setPose(FieldConstants.getInitialPose(FieldConstants.initialCenterSide)),
+                scoreInSpeakerAuto(),
+                driveThenIntake("C_N1", 4, false),
+                scoreInSpeakerAuto(),
+                driveThenIntake("N1_CN2", 4, false),
+                driveTrajectory("CN2_S", 3, false),
+                scoreInSpeakerAuto())
+            .until(() -> RobotState.getInstance().isOverCenterLine()));
 
     autoChooser.addOption(
         "Wheel Diameter Characterization", commands.wheelDiameterCharacterization());

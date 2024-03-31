@@ -312,7 +312,8 @@ public class Drive extends SubsystemBase {
       if (!skipOverride) {
         speeds.omegaRadiansPerSecond =
             steeringController.calculate(steeringTurnAngleRadians.getAsDouble(), 0)
-                * getMaxAngularSpeedRadPerSec();
+                * getMaxAngularSpeedRadPerSec()
+                * 0.75; // reduce maximum rotation speed
       }
     }
 

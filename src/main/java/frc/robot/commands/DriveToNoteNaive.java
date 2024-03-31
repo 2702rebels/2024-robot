@@ -13,9 +13,9 @@ public class DriveToNoteNaive extends Command {
   private static final LoggedTunableNumber thetaTol =
       new LoggedTunableNumber("Drive/Note/Theta Tolerance", 2);
   private static final LoggedTunableNumber velocityLinearSlow =
-      new LoggedTunableNumber("Drive/Note/Velocity Slow", 1);
+      new LoggedTunableNumber("Drive/Note/Velocity Slow", 0.75);
   private static final LoggedTunableNumber velocityLinearFast =
-      new LoggedTunableNumber("Drive/Note/Velocity Fast", 2);
+      new LoggedTunableNumber("Drive/Note/Velocity Fast", 1.5);
 
   private final Drive drive;
   private final NoteDetector detector;
@@ -45,6 +45,8 @@ public class DriveToNoteNaive extends Command {
       targetAcquired = true;
       desiredTheta = drive.getPose().getRotation().getRadians() - note.yaw().getRadians();
     }
+
+    System.out.println("TargetAcquired = " + targetAcquired);
   }
 
   @Override
@@ -75,12 +77,14 @@ public class DriveToNoteNaive extends Command {
 
   @Override
   public void end(boolean interrupted) {
+    System.out.println("DriveToNoteNaive ended, interrupted = " + interrupted);
+
     drive.steeringUnlock();
     drive.stop();
   }
 
   @Override
   public boolean isFinished() {
-    return !targetAcquired || shooter.isFrontBeamTripped();
+    return !targetAcquired || shooter.isFrontBeamTrippedAndTimeout();
   }
 }
