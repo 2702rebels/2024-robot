@@ -234,9 +234,15 @@ public class CommandsFactory {
   /** Commands shooter to reindex the game piece. */
   public Command reindex() {
     return new FunctionalCommand(
-            shooter::feedReverse,
+            () -> {
+              shooter.feedReverse();
+              shooter.reverseFlywheel();
+            },
             () -> {},
-            (interrupted) -> shooter.stopFeed(),
+            (interrupted) -> {
+              shooter.stopFeed();
+              shooter.stop();
+            },
             () -> !shooter.isFrontBeamTripped(),
             shooter)
         .andThen(feedIn())
