@@ -127,11 +127,11 @@ public class CommandsFactory {
               shooter.feedForward();
               if (DriverStation.isAutonomous()) {
                 shooter.reverseFlywheel();
+              }
 
-                // stop feeding once note is far enough into the shooter
-                if (shooter.isFrontBeamTripped()) {
-                  shooter.stopFeed();
-                }
+              // stop feeding once note is far enough into the shooter
+              if (shooter.isFrontBeamTripped()) {
+                shooter.stopFeed();
               }
             },
             () -> {},
