@@ -357,6 +357,8 @@ public class RobotContainer {
     // intake
     controllerDriver.leftTrigger().whileTrue(commands.intake());
 
+    controllerDriver.leftTrigger().onFalse(commands.reindex().withTimeout(2));
+
     // eject
     controllerDriver.y().whileTrue(commands.eject());
 
