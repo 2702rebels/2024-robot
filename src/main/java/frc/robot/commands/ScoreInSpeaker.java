@@ -26,6 +26,7 @@ public class ScoreInSpeaker extends Command {
   private final AprilTagDetector aprilTagDetector;
   private final RobotState state;
   private AprilTag tag;
+  private AprilTag tag2;
 
   public ScoreInSpeaker(
       Drive drive, Shooter shooter, Pivot pivot, AprilTagDetector aprilTagDetector) {
@@ -42,6 +43,7 @@ public class ScoreInSpeaker extends Command {
   public void initialize() {
     // get the tag we need to be scoring on
     tag = aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 4 : 7);
+    tag2 = aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 3 : 8);
 
     pivot.setRequestedAngle(30);
     shooter.setSpeed(4000);
@@ -53,6 +55,8 @@ public class ScoreInSpeaker extends Command {
 
     var z = tag.z;
     var x = tag.x;
+
+    var z2 = tag2.z;
 
     // if we have historical poses, use them to correct the vector
     // based on the difference between current and historic poses
@@ -81,6 +85,13 @@ public class ScoreInSpeaker extends Command {
       z = -t.getX();
     }
 
+    // Distance between april tag centers: 0.565m.
+    final var tagDist = 0.565;
+    final var relationToTargetInDeg =
+        Math.toDegrees(Math.acos((z * z + tagDist * tagDist - z2 * z2) / (2 * z * tagDist)))
+            - 90; // arccos((a^2 + b^2 - c^2) / (2*a*b))
+    Logger.recordOutput("TrackedShooting/RelationToTarget", relationToTargetInDeg);
+
     // fudge factors:
     // -2.3m -- target height over ground
     // +0.1m -- extend target position into the goal to improve accuracy
@@ -93,6 +104,18 @@ public class ScoreInSpeaker extends Command {
     final var speed = z > 4.0 ? 4000 : 3000;
     Logger.recordOutput("TrackedShooting/Speed", speed);
 
+    // Calculate the interpolation between the two distance->speed values.
+    // y0(x1-x)+y1(x-x0)
+    // _________________
+    //      x1-x0
+    final var maxDist = 7.0;
+    final var minDist = 2.0;
+    final var maxSpeed = 4200;
+    final var minSpeed = 2500;
+    final var lerpSpeed =
+        (minSpeed * (maxDist - z) + maxSpeed * (z - minDist)) / (maxDist - minDist);
+    Logger.recordOutput("TrackedShooting/LerpSpeed", lerpSpeed);
+
     // consider tag acquired if we see one or we have seen it within the last 2 seconds
     // so that we can use recent odometry compensation to steer us towards it
     final var targetAcquired =
@@ -102,10 +125,10 @@ public class ScoreInSpeaker extends Command {
       drive.steeringLock(turnAngle);
 
       pivot.setRequestedAngle(-pivotAngle);
-      shooter.setSpeed(speed);
+      shooter.setSpeed(lerpSpeed);
 
       if (pivot.isAtGoal()
-          && shooter.isAtSpeed(speed)
+          && shooter.isAtSpeed(lerpSpeed)
           && Math.abs((Math.toDegrees(turnAngle))) < 3) {
         shooter.feedOut();
       }
