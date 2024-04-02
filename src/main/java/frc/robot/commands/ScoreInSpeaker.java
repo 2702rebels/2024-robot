@@ -12,7 +12,6 @@ import frc.robot.subsystems.pivot.Pivot;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.vision.AprilTag;
 import frc.robot.subsystems.vision.AprilTagDetector;
-//import frc.robot.util.AvgDouble;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardBoolean;
 
@@ -27,9 +26,6 @@ public class ScoreInSpeaker extends Command {
   private final AprilTagDetector aprilTagDetector;
   private final RobotState state;
   private AprilTag tag;
-  //private AprilTag tag2;
-
-  //private AvgDouble angleAvg;
   private boolean goodToShoot = false;
 
   public ScoreInSpeaker(
@@ -39,7 +35,6 @@ public class ScoreInSpeaker extends Command {
     this.pivot = pivot;
     this.aprilTagDetector = aprilTagDetector;
     this.state = RobotState.getInstance();
-    //angleAvg = new AvgDouble(10);
 
     addRequirements(shooter, pivot);
   }
@@ -48,9 +43,6 @@ public class ScoreInSpeaker extends Command {
   public void initialize() {
     // get the tag we need to be scoring on
     tag = aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 4 : 7);
-    //tag2 = aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 3 : 8);
-
-    //angleAvg.clear();
     goodToShoot = false;
   }
 
@@ -60,8 +52,6 @@ public class ScoreInSpeaker extends Command {
 
     var z = tag.z;
     var x = tag.x;
-    // var z2 = tag2.z;
-    // var x2 = tag2.x;
 
     // if we have historical poses, use them to correct the vector
     // based on the difference between current and historic poses
@@ -91,26 +81,6 @@ public class ScoreInSpeaker extends Command {
 
     final var distToTag1 = Math.floor(getHypotenus(z, Math.abs(x)) * 100) / 100;
     Logger.recordOutput("TrackedShooting/Tag1Dist", distToTag1);
-    // final var distToTag2 = Math.floor(getHypotenus(z2, Math.abs(x2)) * 100) / 100;
-    // Logger.recordOutput("TrackedShooting/Tag2Dist", distToTag2);
-
-    // // Distance between april tag centers: 0.565m.
-    // final var distbetweenTagCenters = 0.565;
-    // final var relationToTargetInDeg =
-    //     getAngleFromThreeSides(distToTag1, distbetweenTagCenters, distToTag2) - 90;
-    // Logger.recordOutput("TrackedShooting/RelationToTarget", relationToTargetInDeg);
-
-    // // Move the point to hit 20cm infront of the center tag.
-    // final var distanceForeOfTag = 0.2;
-    // final var distanceToAimPoint =
-    //     getSideFromAngleAndTwoSides(distToTag1, distanceForeOfTag, relationToTargetInDeg);
-    // Logger.recordOutput("TrackedShooting/DistanceToAimPoint", distanceToAimPoint);
-
-    // final var angleToAimPoint =
-    //     getAngleFromThreeSides(distToTag1, distanceToAimPoint, distanceForeOfTag);
-    // Logger.recordOutput("TrackedShooting/AngleToAimPoint", angleToAimPoint);
-    // angleAvg.add(angleToAimPoint);
-    // Logger.recordOutput("TrackedShooting/AvgAngleToAimPoint", angleAvg.getAverage());
 
     // -2.2m -- target height over ground
     final var pivotAngle = Math.toDegrees(Math.atan2(-2.2, distToTag1));
@@ -128,7 +98,8 @@ public class ScoreInSpeaker extends Command {
     final var maxSpeed = 4000;
     final var minSpeed = 2500;
     final var lerpSpeed =
-        (minSpeed * (maxDist - distToTag1) + maxSpeed * (distToTag1 - minDist)) / (maxDist - minDist);
+        (minSpeed * (maxDist - distToTag1) + maxSpeed * (distToTag1 - minDist))
+            / (maxDist - minDist);
     Logger.recordOutput("TrackedShooting/LerpSpeed", lerpSpeed);
 
     // consider tag acquired if we see one or we have seen it within the last 2 seconds
@@ -169,18 +140,7 @@ public class ScoreInSpeaker extends Command {
 
   @Override
   public boolean isFinished() {
-    return false;
-    // return !shooter.hasGamePiece();
-  }
-
-  // C = arccos((a^2 + b^2 - c^2) / (2ab))
-  private double getAngleFromThreeSides(double a, double b, double c) {
-    return Math.toDegrees(Math.acos((a * a + b * b - c * c) / (2 * a * b)));
-  }
-
-  // c = sqrt(a^2 + b^2 - 2abcos(C))
-  private double getSideFromAngleAndTwoSides(double aSide, double bSide, double thetaC) {
-    return Math.sqrt(aSide * aSide + bSide * bSide - 2 * aSide * bSide * Math.cos(thetaC));
+    return !shooter.hasGamePiece();
   }
 
   private double getHypotenus(double a, double b) {
