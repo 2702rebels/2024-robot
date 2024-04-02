@@ -12,7 +12,7 @@ public class AprilTagDetector extends SubsystemBase {
   private static final double[] EmptyDoubleArray = new double[] {};
   private final DoubleArraySubscriber subscriber;
 
-  private final AprilTag[] tags = new AprilTag[16]; // 16 april tags locations
+  private final AprilTag[] tags = new AprilTag[18]; // 16 april tags locations
   private final double cutoff = 1e15; // Vision sends -3e16
 
   public AprilTagDetector() {

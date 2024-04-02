@@ -491,6 +491,7 @@ public class RobotContainer {
     final var tracking = aprilTagDetector.areTagsTracked(7, 4, 2);
     RobotState.getInstance().setTrackingTags(tracking);
     led.setTracking(tracking);
+    led.setTrackingBoth(aprilTagDetector.areTagsTracked(3, 8));
   }
 
   public void onAutoInit() {
