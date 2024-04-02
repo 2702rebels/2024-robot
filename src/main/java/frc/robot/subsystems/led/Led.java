@@ -21,6 +21,7 @@ public class Led extends SubsystemBase {
   private double periodLast;
   private int periodDiscretization;
   private boolean isTracking;
+  private boolean isTrackingBoth;
 
   /** Pattern that does nothing */
   private static void nop(AddressableLEDBuffer buffer, double t) {}
@@ -113,14 +114,20 @@ public class Led extends SubsystemBase {
     pattern.accept(buffer, Double.valueOf(t));
 
     // override the buffer portion to convey vision information
-    for (int i = LedConstants.VISION[0]; i <= LedConstants.VISION[1]; ++i) {
-      buffer.setLED(i, isTracking ? Color.kGreen : Color.kRed);
+    Color trackingColour;
+    if (isTracking) {
+      trackingColour = isTrackingBoth ? Color.kPurple : Color.kGreen;
+    } else {
+      trackingColour = Color.kRed;
     }
 
+    for (int i = LedConstants.VISION[0]; i <= LedConstants.VISION[1]; ++i) {
+      buffer.setLED(i, trackingColour);
+    }
     for (int i = LedConstants.VISION_SHOOTER_SIDE[0];
         i <= LedConstants.VISION_SHOOTER_SIDE[1];
         i++) {
-      buffer.setLED(i, isTracking ? Color.kGreen : Color.kRed);
+      buffer.setLED(i, trackingColour);
     }
 
     strip.setData(buffer);
@@ -175,5 +182,9 @@ public class Led extends SubsystemBase {
   /** Sets indicator of the visual target tracking. */
   public void setTracking(boolean isTracking) {
     this.isTracking = isTracking;
+  }
+
+  public void setTrackingBoth(boolean secondTags) {
+    this.isTrackingBoth = this.isTracking && secondTags;
   }
 }

@@ -12,6 +12,7 @@ import frc.robot.subsystems.pivot.Pivot;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.vision.AprilTag;
 import frc.robot.subsystems.vision.AprilTagDetector;
+import frc.robot.util.AvgDouble;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardBoolean;
 
@@ -28,6 +29,10 @@ public class ScoreInSpeaker extends Command {
   private AprilTag tag;
   private AprilTag tag2;
 
+  private AvgDouble angleAvg;
+  private AvgDouble angleAvg2;
+  private boolean goodToShoot = false;
+
   public ScoreInSpeaker(
       Drive drive, Shooter shooter, Pivot pivot, AprilTagDetector aprilTagDetector) {
     this.drive = drive;
@@ -35,6 +40,8 @@ public class ScoreInSpeaker extends Command {
     this.pivot = pivot;
     this.aprilTagDetector = aprilTagDetector;
     this.state = RobotState.getInstance();
+    angleAvg = new AvgDouble(10);
+    angleAvg2 = new AvgDouble(10);
 
     addRequirements(shooter, pivot);
   }
@@ -45,8 +52,10 @@ public class ScoreInSpeaker extends Command {
     tag = aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 4 : 7);
     tag2 = aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 3 : 8);
 
-    pivot.setRequestedAngle(30);
-    shooter.setSpeed(4000);
+    // pivot.setRequestedAngle(30);
+
+    angleAvg.clear();
+    angleAvg2.clear();
   }
 
   @Override
@@ -55,8 +64,8 @@ public class ScoreInSpeaker extends Command {
 
     var z = tag.z;
     var x = tag.x;
-
     var z2 = tag2.z;
+    var x2 = tag2.x;
 
     // if we have historical poses, use them to correct the vector
     // based on the difference between current and historic poses
@@ -76,7 +85,6 @@ public class ScoreInSpeaker extends Command {
       // vector to the vision target in field frame of reference
       final var targetVector =
           new Translation2d(fieldTranslation.getX() + dx, fieldTranslation.getY() + dy);
-
       Logger.recordOutput("TrackedShooting/Target", translationNow.plus(targetVector));
 
       // convert target vector back to the vision frame of reference
@@ -85,24 +93,38 @@ public class ScoreInSpeaker extends Command {
       z = -t.getX();
     }
 
-    // Distance between april tag centers: 0.565m.
-    final var tagDist = 0.565;
-    final var relationToTargetInDeg =
-        Math.toDegrees(Math.acos((z * z + tagDist * tagDist - z2 * z2) / (2 * z * tagDist)))
-            - 90; // arccos((a^2 + b^2 - c^2) / (2*a*b))
-    Logger.recordOutput("TrackedShooting/RelationToTarget", relationToTargetInDeg);
+    final var distToTag1 = Math.floor(getHypotenus(z, Math.abs(x)) * 100) / 100;
+    Logger.recordOutput("TrackedShooting/Tag1Dist", distToTag1);
+    final var distToTag2 = Math.floor(getHypotenus(z2, Math.abs(x2)) * 100) / 100;
+    Logger.recordOutput("TrackedShooting/Tag2Dist", distToTag2);
 
-    // fudge factors:
-    // -2.3m -- target height over ground
-    // +0.1m -- extend target position into the goal to improve accuracy
-    final var pivotAngle = Math.toDegrees(Math.atan2(-2.3, z + 0.1));
+    // Distance between april tag centers: 0.565m.
+    final var distbetweenTagCenters = 0.565;
+    final var relationToTargetInDeg =
+        getAngleFromThreeSides(distToTag1, distbetweenTagCenters, distToTag2) - 90;
+    Logger.recordOutput("TrackedShooting/RelationToTarget", relationToTargetInDeg);
+    angleAvg2.add(relationToTargetInDeg);
+    final var relationToTargetInDegAvg = angleAvg2.getAverage();
+    Logger.recordOutput("TrackedShooting/AvgRelationToTarget", relationToTargetInDegAvg);
+
+    // Move the point to hit 10cm infront of the center tag.
+    final var distanceForeOfTag = 0.1;
+    final var distanceToAimPoint =
+        getSideFromAngleAndTwoSides(distToTag1, distanceForeOfTag, relationToTargetInDegAvg);
+    Logger.recordOutput("TrackedShooting/DistanceToAimPoint", distanceToAimPoint);
+
+    final var angleToAimPoint =
+        getAngleFromThreeSides(distToTag1, distanceToAimPoint, distanceForeOfTag);
+    Logger.recordOutput("TrackedShooting/AngleToAimPoint", angleToAimPoint);
+    angleAvg.add(angleToAimPoint);
+    Logger.recordOutput("TrackedShooting/AvgAngleToAimPoint", angleAvg.getAverage());
+
+    // -2.2m -- target height over ground
+    final var pivotAngle = Math.toDegrees(Math.atan2(-2.2, distToTag1));
     Logger.recordOutput("TrackedShooting/PivotAngle", pivotAngle);
 
     final var turnAngle = Math.atan2(x, z);
     Logger.recordOutput("TrackedShooting/TurnAngle", Math.toDegrees(turnAngle));
-
-    final var speed = z > 4.0 ? 4000 : 3000;
-    Logger.recordOutput("TrackedShooting/Speed", speed);
 
     // Calculate the interpolation between the two distance->speed values.
     // y0(x1-x)+y1(x-x0)
@@ -110,7 +132,7 @@ public class ScoreInSpeaker extends Command {
     //      x1-x0
     final var maxDist = 7.0;
     final var minDist = 2.0;
-    final var maxSpeed = 4200;
+    final var maxSpeed = 4000;
     final var minSpeed = 2500;
     final var lerpSpeed =
         (minSpeed * (maxDist - z) + maxSpeed * (z - minDist)) / (maxDist - minDist);
@@ -129,12 +151,18 @@ public class ScoreInSpeaker extends Command {
 
       if (pivot.isAtGoal()
           && shooter.isAtSpeed(lerpSpeed)
-          && Math.abs((Math.toDegrees(turnAngle))) < 3) {
+          && Math.abs((Math.toDegrees(turnAngle))) < 1) {
+        goodToShoot = true;
         shooter.feedOut();
+      } else {
+        shooter.stopFeed();
+        goodToShoot = false;
       }
     } else {
       drive.steeringUnlock();
     }
+
+    Logger.recordOutput("TrackedShooting/GoodToShoot", goodToShoot);
 
     // runs active steering if needed in autonomous mode
     if (DriverStation.isAutonomous()) {
@@ -151,6 +179,21 @@ public class ScoreInSpeaker extends Command {
 
   @Override
   public boolean isFinished() {
-    return !shooter.hasGamePiece();
+    return false;
+    // return !shooter.hasGamePiece();
+  }
+
+  // C = arccos((a^2 + b^2 - c^2) / (2ab))
+  private double getAngleFromThreeSides(double a, double b, double c) {
+    return Math.toDegrees(Math.acos((a * a + b * b - c * c) / (2 * a * b)));
+  }
+
+  // c = sqrt(a^2 + b^2 - 2abcos(C))
+  private double getSideFromAngleAndTwoSides(double aSide, double bSide, double thetaC) {
+    return Math.sqrt(aSide * aSide + bSide * bSide - 2 * aSide * bSide * Math.cos(thetaC));
+  }
+
+  private double getHypotenus(double a, double b) {
+    return Math.sqrt(a * a + b * b);
   }
 }
