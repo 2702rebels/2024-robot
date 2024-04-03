@@ -4,6 +4,7 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
+import frc.robot.Constants;
 
 /**
  * Physics sim implementation of module IO.
@@ -13,8 +14,6 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim;
  * approximation for the behavior of the module.
  */
 public class ModuleIOSim implements ModuleIO {
-  private static final double LOOP_PERIOD_SECS = 0.02;
-
   private final DCMotorSim driveSim = new DCMotorSim(DCMotor.getNEO(1), 1.0, 0.025);
   private final DCMotorSim turnSim = new DCMotorSim(DCMotor.getNEO(1), 1.0, 0.004);
 
@@ -23,8 +22,8 @@ public class ModuleIOSim implements ModuleIO {
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
-    driveSim.update(LOOP_PERIOD_SECS);
-    turnSim.update(LOOP_PERIOD_SECS);
+    driveSim.update(Constants.cyclePeriodSeconds);
+    turnSim.update(Constants.cyclePeriodSeconds);
 
     inputs.drivePositionMeters = driveSim.getAngularPositionRotations();
     inputs.driveVelocityMetersPerSec = driveSim.getAngularPositionRotations();

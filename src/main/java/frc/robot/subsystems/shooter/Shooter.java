@@ -1,42 +1,35 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.subsystems.shooter;
 
 import edu.wpi.first.units.Units;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.FunctionalCommand;
-import edu.wpi.first.wpilibj2.command.StartEndCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.util.LoggedTunableNumber;
-import java.util.function.BooleanSupplier;
+import java.util.OptionalDouble;
 import org.littletonrobotics.junction.Logger;
 
 public class Shooter extends SubsystemBase {
-  private final ShooterIO subsystemIO;
-  private final ShooterIOInputsAutoLogged subsystemInputs = new ShooterIOInputsAutoLogged();
+  private final ShooterIO io;
+  private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
 
-  private final LoggedTunableNumber kp = new LoggedTunableNumber("Shooter/FlywheelPID/P", 0.0002);
-  private final LoggedTunableNumber ki = new LoggedTunableNumber("Shooter/FlywheelPID/I", 0.0);
-  private final LoggedTunableNumber kd = new LoggedTunableNumber("Shooter/FlywheelPID/D", 0.0);
-  private final LoggedTunableNumber kff =
-      new LoggedTunableNumber("Shooter/FlywheelPID/FF", 0.000183);
-  private final LoggedTunableNumber staticGain =
-      new LoggedTunableNumber("Shooter/FlywheelPID/StaticGain", 0.2265);
-
-  private final LoggedTunableNumber atSpeedAllowance =
-      new LoggedTunableNumber("Shooter/AtSpeedAllowance", 50);
+  // spotless:off
+  private static final LoggedTunableNumber kP  = new LoggedTunableNumber("Shooter/Flywheel P", 0.0002);
+  private static final LoggedTunableNumber kI  = new LoggedTunableNumber("Shooter/Flywheel I", 0.0);
+  private static final LoggedTunableNumber kD  = new LoggedTunableNumber("Shooter/Flywheel D", 0.0);
+  private static final LoggedTunableNumber kFF = new LoggedTunableNumber("Shooter/Flywheel FF", 0.00020);
+  private static final LoggedTunableNumber kS  = new LoggedTunableNumber("Shooter/Flywheel kS", 0.2265);
+  private static final LoggedTunableNumber atSpeedAllowance = new LoggedTunableNumber("Shooter/AtSpeedAllowance", 100);
+  private static final LoggedTunableNumber reverseSpeed = new LoggedTunableNumber("Shooter/Reverse Speed", -0.2);
+  // spotless:on
 
   private final SysIdRoutine sysId;
-
   private boolean feeding = false;
+  private OptionalDouble frontBeamTrippedAt = OptionalDouble.empty();
 
-  /** Creates a new Shooter Subsystem. */
-  public Shooter(ShooterIO shooter) {
-    subsystemIO = shooter;
-    subsystemIO.configureFlywheelPID(kp.get(), ki.get(), kd.get(), kff.get(), staticGain.get());
+  public Shooter(ShooterIO io) {
+    this.io = io;
+    this.io.configureFlywheelPID(kP.get(), kI.get(), kD.get(), kFF.get(), kS.get());
 
     sysId =
         new SysIdRoutine(
@@ -50,23 +43,32 @@ public class Shooter extends SubsystemBase {
 
   @Override
   public void periodic() {
-    subsystemIO.updateInputs(subsystemInputs);
-    Logger.processInputs("Shooter/Inputs", subsystemInputs);
+    io.updateInputs(inputs);
+    Logger.processInputs("Shooter/Inputs", inputs);
 
     final var callerId = hashCode();
-    if (kp.hasChanged(callerId)
-        || ki.hasChanged(callerId)
-        || kd.hasChanged(callerId)
-        || kff.hasChanged(callerId)
-        || staticGain.hasChanged(callerId)) {
-      System.out.println("Flywheel velocity PID parameters have changed. Reconfiguring them.");
-      subsystemIO.configureFlywheelPID(kp.get(), ki.get(), kd.get(), kff.get(), staticGain.get());
+    if (kP.hasChanged(callerId)
+        || kI.hasChanged(callerId)
+        || kD.hasChanged(callerId)
+        || kFF.hasChanged(callerId)
+        || kS.hasChanged(callerId)) {
+      System.out.println(
+          "[Shooter] Flywheel velocity PID parameters have changed. Reconfiguring them.");
+      io.configureFlywheelPID(kP.get(), kI.get(), kD.get(), kFF.get(), kS.get());
+    }
+
+    if (isFrontBeamTripped() && frontBeamTrippedAt.isEmpty()) {
+      frontBeamTrippedAt = OptionalDouble.of(Timer.getFPGATimestamp());
+    }
+
+    if (!isFrontBeamTripped() && frontBeamTrippedAt.isPresent()) {
+      frontBeamTrippedAt = OptionalDouble.empty();
     }
   }
 
   /** Runs the open loop at the specified voltage. */
   public void runVolts(double volts) {
-    subsystemIO.setVoltage(volts);
+    io.setVoltage(volts);
   }
 
   /** Returns a command to run a quasistatic test in the specified direction. */
@@ -80,91 +82,72 @@ public class Shooter extends SubsystemBase {
   }
 
   public boolean isAtSpeed(double rpm) {
-    if (subsystemInputs.flywheelVelocity > rpm - atSpeedAllowance.get()
-        && subsystemInputs.flywheelVelocity < rpm + atSpeedAllowance.get()) {
-      return true;
-    }
-    return false;
+    return inputs.flywheelVelocity > rpm - atSpeedAllowance.get()
+        && inputs.flywheelVelocity < rpm + atSpeedAllowance.get() * 2;
   }
 
   public boolean hasGamePiece() {
-    return subsystemInputs.beamBreakFront || subsystemInputs.beamBreakBack;
+    return inputs.beamBreakFront || inputs.beamBreakBack;
   }
 
   public boolean isFrontBeamTripped() {
-    return subsystemInputs.beamBreakFront;
+    return inputs.beamBreakFront;
+  }
+
+  public boolean isFrontBeamTrippedAndTimeout() {
+    final var timestamp = Timer.getFPGATimestamp();
+    return isFrontBeamTripped()
+        && frontBeamTrippedAt.isPresent()
+        && (timestamp - frontBeamTrippedAt.getAsDouble()) > 0.08;
   }
 
   public boolean isBackBeamTripped() {
-    return subsystemInputs.beamBreakBack;
+    return inputs.beamBreakBack;
   }
 
   public boolean isFeeding() {
     return feeding;
   }
 
-  /**
-   * Spin up the flywheel and will feed the game piece into the flywheel when it's both at speed and
-   * the addtional okToShoot boolean supplier resolves to true.
-   */
-  public Command shoot(double rpm, BooleanSupplier okToShoot) {
-    return new FunctionalCommand(
-        () -> {
-          subsystemIO.setFlywheelSpeed(rpm);
-        },
-        () -> {
-          if (isAtSpeed(rpm) && okToShoot.getAsBoolean()) {
-            subsystemIO.setFeedPercentOutput(0.7);
-          }
-        },
-        (interupted) -> {
-          subsystemIO.stopFlywheel();
-          subsystemIO.stopFeed();
-        },
-        () -> {
-          return false;
-        },
-        this);
+  public boolean isFeedLive() {
+    return inputs.feedVelocity >= 1000;
   }
 
-  public void spinUp(double speed) {
-    subsystemIO.setFlywheelSpeed(speed);
+  public void setSpeed(double speed) {
+    io.setFlywheelSpeed(speed);
   }
 
   public void feedOut() {
-    subsystemIO.setFeedPercentOutput(0.7);
+    io.setFeedPercentOutput(0.7);
   }
 
-  public void startFeed() {
-    subsystemIO.setFeedPercentOutput(0.3);
+  public void feedReverse() {
+    io.setFeedPercentOutput(-0.2);
+  }
+
+  public void feedForward() {
+    io.setFeedPercentOutput(0.3);
     feeding = true;
   }
 
   public void stopFeed() {
-    subsystemIO.stopFeed();
+    io.stopFeed();
     feeding = false;
-  }
-
-  public Command feedIn() {
-    return new StartEndCommand(
-            () -> {
-              subsystemIO.setFeedPercentOutput(0.3);
-              feeding = true;
-            },
-            () -> {
-              subsystemIO.stopFeed();
-              feeding = false;
-            },
-            this)
-        .until(
-            () -> {
-              return subsystemInputs.beamBreakFront;
-            });
   }
 
   /** Stops shooter and feed. */
   public void stop() {
-    subsystemIO.stopFeed();
-    subsystemIO.stopFlywheel();
+    stopFeed();
+    io.stopFlywheel();
+  }
+
+  /** Enables or disables brake mode on the flywheel. */
+  public void setFlywheelBrakeMode(boolean enable) {
+    io.setFlywheelBrakeMode(enable);
+  }
+
+  /** Runs flywheel in reverse to keep notes from popping out. */
+  public void reverseFlywheel() {
+    io.setFlywheelPercentOutput(reverseSpeed.get());
   }
 }

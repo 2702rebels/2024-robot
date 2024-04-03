@@ -4,6 +4,9 @@
 
 package frc.robot;
 
+import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.BooleanSubscriber;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import java.util.HashMap;
@@ -18,6 +21,8 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 public class Robot extends LoggedRobot {
   private Command autonomousCommand;
   private RobotContainer robotContainer;
+  private BooleanSubscriber cameraIsLogging;
+  private BooleanPublisher isLogging;
 
   private static final String logPath = "/U/logs";
 
@@ -27,6 +32,13 @@ public class Robot extends LoggedRobot {
    */
   @Override
   public void robotInit() {
+    var ntInstance = NetworkTableInstance.getDefault();
+    isLogging = ntInstance.getBooleanTopic("/Vision/IsLogging").publish();
+    isLogging.set(false);
+
+    // Pi is logging
+    cameraIsLogging = ntInstance.getBooleanTopic("Vision/PiIsLogging").subscribe(false);
+
     // record metadata
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
     Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
@@ -50,7 +62,7 @@ public class Robot extends LoggedRobot {
     switch (Constants.currentMode) {
       case REAL:
         // running on a real robot, log to a USB stick ("/U/logs")
-        Logger.addDataReceiver(new WPILOGWriter(logPath));
+        // Logger.addDataReceiver(new WPILOGWriter(logPath));
         Logger.addDataReceiver(new NT4Publisher());
         break;
 
@@ -82,6 +94,8 @@ public class Robot extends LoggedRobot {
   @Override
   public void robotPeriodic() {
     CommandScheduler.getInstance().run();
+
+    robotContainer.updateVisionTracking();
   }
 
   @Override
@@ -90,14 +104,23 @@ public class Robot extends LoggedRobot {
   }
 
   @Override
-  public void disabledPeriodic() {}
+  public void disabledPeriodic() {
+    if (cameraIsLogging.get()) {
+      robotContainer.setLoggingIndicator(true);
+    } else {
+      robotContainer.setLoggingIndicator(false);
+    }
+  }
 
   @Override
   public void disabledExit() {}
 
   @Override
   public void autonomousInit() {
+    robotContainer.onAutoInit();
+
     autonomousCommand = robotContainer.getAutonomousCommand();
+    isLogging.set(true);
 
     if (autonomousCommand != null) {
       autonomousCommand.schedule();
@@ -112,6 +135,8 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void teleopInit() {
+    robotContainer.onTeleopInit();
+
     if (autonomousCommand != null) {
       autonomousCommand.cancel();
     }

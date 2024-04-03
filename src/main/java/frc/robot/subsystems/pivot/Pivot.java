@@ -1,42 +1,35 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.subsystems.pivot;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 
 public class Pivot extends SubsystemBase {
-  private static final double LOOP_PERIOD_SECS = 0.02;
-  private final LoggedTunableNumber kp = new LoggedTunableNumber("Pivot/PID/P", 1.0);
-  private final LoggedTunableNumber ki = new LoggedTunableNumber("Pivot/PID/I", 0.0);
-  private final LoggedTunableNumber kd = new LoggedTunableNumber("Pivot/PID/D", 0.0);
+  private final PivotIO io;
+  private final PivotIOInputsAutoLogged inputs = new PivotIOInputsAutoLogged();
 
-  private final LoggedTunableNumber ks = new LoggedTunableNumber("Pivot/ArmFeedForward/KS", 0.01);
-  private final LoggedTunableNumber kg = new LoggedTunableNumber("Pivot/ArmFeedForward/KG", 0.44);
-  private final LoggedTunableNumber kv = new LoggedTunableNumber("Pivot/ArmFeedForward/KV", 2.57);
-  private final LoggedTunableNumber ka = new LoggedTunableNumber("Pivot/ArmFeedForward/KA", 0.02);
+  // spotless:off
+  private static final LoggedTunableNumber kP = new LoggedTunableNumber("Pivot/Motor P", 1.0);
+  private static final LoggedTunableNumber kI = new LoggedTunableNumber("Pivot/Motor I", 0.0);
+  private static final LoggedTunableNumber kD = new LoggedTunableNumber("Pivot/Motor D", 0.0);
 
-  private final LoggedTunableNumber kmv =
-      new LoggedTunableNumber("Pivot/TrapezoidProfile/MaxVelocity", 0.0);
-  private final LoggedTunableNumber kma =
-      new LoggedTunableNumber("Pivot/TrapezoidProfile/MaxAcceleration", 0.0);
+  private static final LoggedTunableNumber kS = new LoggedTunableNumber("Pivot/ArmFF kS", 0.01);
+  private static final LoggedTunableNumber kG = new LoggedTunableNumber("Pivot/ArmFF kG", 0.44);
+  private static final LoggedTunableNumber kV = new LoggedTunableNumber("Pivot/ArmFF kV", 2.57);
+  private static final LoggedTunableNumber kA = new LoggedTunableNumber("Pivot/ArmFF kA", 0.02);
 
-  private final LoggedTunableNumber minPivotAngle =
-      new LoggedTunableNumber("Pivot/Limit/MinAngle", 15.0);
-  private final LoggedTunableNumber maxPivotAngle =
-      new LoggedTunableNumber("Pivot/Limit/MaxAngle", 110.0);
-  private final LoggedTunableNumber onGoalAllowance =
-      new LoggedTunableNumber("Pivot/OnGoalAllowance", 1.0);
+  private static final LoggedTunableNumber maxVelocity = new LoggedTunableNumber("Pivot/Profile/Max Velocity", 0.0);
+  private static final LoggedTunableNumber maxAcceleration = new LoggedTunableNumber("Pivot/Profile/Max Acceleration", 0.0);
+
+  private static final LoggedTunableNumber minPivotAngle = new LoggedTunableNumber("Pivot/Limit/Min Angle", 15.0);
+  private static final LoggedTunableNumber maxPivotAngle = new LoggedTunableNumber("Pivot/Limit/Max Angle", 110.0);
+  private static final LoggedTunableNumber onGoalAllowance = new LoggedTunableNumber("Pivot/OnGoalAllowance", 1.0);
+  // spotless:on
 
   private ArmFeedforward armFeedforward;
   private TrapezoidProfile trapezoidProfile;
@@ -46,140 +39,95 @@ public class Pivot extends SubsystemBase {
 
   private boolean enabled = false;
 
-  private final PivotIO pivotMotor;
-  private final PivotIOInputsAutoLogged motorInputs = new PivotIOInputsAutoLogged();
-
   private double requestedPosInDeg = 0;
 
-  /** Creates a new Pivot. */
-  public Pivot(PivotIO pivot) {
-    pivotMotor = pivot;
-    pivotMotor.configureJointPID(kp.get(), ki.get(), kd.get());
-    armFeedforward = new ArmFeedforward(ks.get(), kg.get(), kv.get(), ka.get());
-    trapezoidProfile = new TrapezoidProfile(new TrapezoidProfile.Constraints(kmv.get(), kma.get()));
+  public Pivot(PivotIO io) {
+    this.io = io;
+    this.io.configureJointPID(kP.get(), kI.get(), kD.get());
+
+    armFeedforward = new ArmFeedforward(kS.get(), kG.get(), kV.get(), kA.get());
+    trapezoidProfile =
+        new TrapezoidProfile(
+            new TrapezoidProfile.Constraints(maxVelocity.get(), maxAcceleration.get()));
   }
 
   @Override
   public void periodic() {
-    pivotMotor.updateInputs(motorInputs);
-    Logger.processInputs("Pivot/Motor", motorInputs);
+    io.updateInputs(inputs);
+    Logger.processInputs("Pivot/Inputs", inputs);
 
     final var callerId = hashCode();
-    if (kp.hasChanged(callerId) || ki.hasChanged(callerId) || kd.hasChanged(callerId)) {
-      System.out.println("Pivot PID parameters have changed. Reconfiguring them.");
-      pivotMotor.configureJointPID(kp.get(), ki.get(), kd.get());
+    if (kP.hasChanged(callerId) || kI.hasChanged(callerId) || kD.hasChanged(callerId)) {
+      System.out.println("[Pivot] Joint PID parameters have changed. Reconfiguring them.");
+      io.configureJointPID(kP.get(), kI.get(), kD.get());
     }
 
-    if (ks.hasChanged(callerId)
-        || kg.hasChanged(callerId)
-        || kv.hasChanged(callerId)
-        || ka.hasChanged(callerId)) {
-      System.out.println("Pivot ArmFeedForward parameters have changed. Reconfiguring them.");
-      armFeedforward = new ArmFeedforward(ks.get(), kg.get(), kv.get(), ka.get());
+    if (kS.hasChanged(callerId)
+        || kG.hasChanged(callerId)
+        || kV.hasChanged(callerId)
+        || kA.hasChanged(callerId)) {
+      System.out.println("[Pivot] ArmFeedForward parameters have changed. Reconfiguring them.");
+      armFeedforward = new ArmFeedforward(kS.get(), kG.get(), kV.get(), kA.get());
     }
 
-    if (kmv.hasChanged(callerId) || kma.hasChanged(callerId)) {
-      System.out.println("Pivot TrapezoidProfile parameters have changed. Reconfiguring them.");
+    if (maxVelocity.hasChanged(callerId) || maxAcceleration.hasChanged(callerId)) {
+      System.out.println("[Pivot] TrapezoidProfile parameters have changed. Reconfiguring them.");
       trapezoidProfile =
-          new TrapezoidProfile(new TrapezoidProfile.Constraints(kmv.get(), kma.get()));
+          new TrapezoidProfile(
+              new TrapezoidProfile.Constraints(maxVelocity.get(), maxAcceleration.get()));
     }
 
-    // Convert from degrees to radians.
-    goal.position = requestedPosInDeg * (Math.PI / 180);
-    state.position = motorInputs.measuredPositionRadians;
-    state.velocity = motorInputs.measuredVelocityRadiansPerSecond;
-    state =
-        trapezoidProfile.calculate(
-            LOOP_PERIOD_SECS,
-            state,
-            goal); // This calulate method is doing at least two new allocaitons...
-    double ff = armFeedforward.calculate(state.position, state.velocity);
+    goal.position = Math.toRadians(requestedPosInDeg);
+    state.position = inputs.measuredPositionRadians;
+    state.velocity = inputs.measuredVelocityRadiansPerSecond;
+
+    // this calculate method is doing at least two new allocations... :(
+    state = trapezoidProfile.calculate(Constants.cyclePeriodSeconds, state, goal);
+    final var ff = armFeedforward.calculate(state.position, state.velocity);
 
     Logger.recordOutput("Pivot/RequestedPosition", requestedPosInDeg);
     Logger.recordOutput("Pivot/StatePosition", state.position);
     Logger.recordOutput("Pivot/StateVelocity", state.velocity);
     Logger.recordOutput("Pivot/ArmFeedForward", ff);
-    Logger.recordOutput("Pivot/PositionRadians", motorInputs.measuredPositionRadians);
-    Logger.recordOutput(
-        "Pivot/PositionAngle", motorInputs.measuredPositionRadians * (180 / Math.PI));
+    Logger.recordOutput("Pivot/PositionRadians", inputs.measuredPositionRadians);
+    Logger.recordOutput("Pivot/PositionAngle", Math.toDegrees(inputs.measuredPositionRadians));
 
     if (enabled) {
-      pivotMotor.setJointAngle(state.position, ff);
+      io.setJointAngle(state.position, ff);
     } else {
-      pivotMotor.stop();
+      io.stop();
     }
+  }
+
+  /** Disable pivot's control loop. */
+  public void disable() {
+    enabled = false;
+    System.out.println("[Pivot] Disabling pivot control loop.");
   }
 
   /** Sets the requested angle for the pivot's control loop. */
   public void setRequestedAngle(double angle) {
     if (!enabled) {
       enabled = true;
-      System.out.println("Enabling pivot control loop.");
+      System.out.println("[Pivot] Enabling pivot control loop.");
     }
+
     requestedPosInDeg = MathUtil.clamp(angle, minPivotAngle.get(), maxPivotAngle.get());
   }
 
-  /** Returns the pivot's current angle. */
+  /** Returns the pivot's current angle in degrees. Zero degrees is horizontal with the ground. */
   public double getCurrentAngle() {
-    return motorInputs.measuredPositionRadians * (180 / Math.PI);
+    return Math.toDegrees(inputs.measuredPositionRadians);
   }
 
   /** Checks if the pivot is at it's requested goal. With + or - the allowance. */
   public boolean isAtGoal(double allowance) {
-    double angle = getCurrentAngle();
-    if (angle < requestedPosInDeg + allowance && angle > requestedPosInDeg - allowance) {
-      return true;
-    }
-    return false;
+    final double angle = getCurrentAngle();
+    return angle < requestedPosInDeg + allowance && angle > requestedPosInDeg - allowance;
   }
 
   /** Checks if the pivot is at it's requested goal. Uses default onGoalAllowance parameters. */
   public boolean isAtGoal() {
     return isAtGoal(onGoalAllowance.get());
-  }
-
-  /** The current angle of the pivot. Zero degrees is horizontal with the ground. */
-  public double getAngle() {
-    return getCurrentAngle();
-  }
-
-  /** Enables the control loop. */
-  public Command enableControlLoop() {
-    return Commands.runOnce(
-        () -> {
-          enabled = true;
-          System.out.println("Enabling pivot control loop.");
-        },
-        this);
-  }
-
-  /** Disables the control loop. */
-  public Command disableControlLoop() {
-    return Commands.runOnce(
-            () -> {
-              enabled = false;
-              System.out.println("Disabling pivot control loop.");
-            },
-            this)
-        .ignoringDisable(true);
-  }
-
-  /** Commands the arm to a position, ending the command when it arrives (+ or - the allowance). */
-  public Command moveArmToPosition(double angle, double allowance) {
-    return new FunctionalCommand(
-        () -> {
-          setRequestedAngle(angle);
-        },
-        () -> {},
-        (interupted) -> {},
-        () -> {
-          return isAtGoal(allowance);
-        },
-        this);
-  }
-
-  /** Commands the arm to a position, ending the command when it arrives. */
-  public Command moveArmToPosition(double angle) {
-    return moveArmToPosition(angle, onGoalAllowance.get());
   }
 }

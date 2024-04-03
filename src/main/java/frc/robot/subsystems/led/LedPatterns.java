@@ -122,16 +122,14 @@ public final class LedPatterns {
 
   private static final Random rnd = new Random();
 
+  /**
+   * Implements "random" LED pattern with the solid HSV color.
+   *
+   * <p>The implementation randomly varies brightness while retaining hue and saturation.
+   */
   public static void random(AddressableLEDBuffer buffer, double t, ColorHSV color) {
     for (var i = 0; i < buffer.getLength(); ++i) {
-      var v = rnd.nextInt(256);
-      if (v > 127) {
-        v = 255;
-      } else {
-        v = 0;
-      }
-
-      buffer.setHSV(i, color.hue(), color.saturation(), v);
+      buffer.setHSV(i, color.hue(), color.saturation(), rnd.nextBoolean() ? 255 : 0);
     }
   }
 }

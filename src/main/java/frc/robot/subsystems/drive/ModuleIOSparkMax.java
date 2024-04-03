@@ -14,7 +14,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import frc.robot.Constants;
 import frc.robot.subsystems.drive.DriveConstants.DrivetrainConfig;
 import frc.robot.subsystems.drive.DriveConstants.ModuleConfig;
-import frc.robot.util.SparkMaxBurnManager;
+import frc.robot.util.SparkMaxManager;
 import java.util.OptionalDouble;
 import java.util.Queue;
 
@@ -28,8 +28,8 @@ import java.util.Queue;
  * "/Drive/ModuleX/TurnAbsolutePositionRad"
  */
 public class ModuleIOSparkMax implements ModuleIO {
-  private final CANSparkMax driveSparkMax;
-  private final CANSparkMax turnSparkMax;
+  private final CANSparkMax driveMotor;
+  private final CANSparkMax turnMotor;
 
   private final RelativeEncoder driveEncoder;
   private final AbsoluteEncoder turnAbsoluteEncoder;
@@ -55,73 +55,50 @@ public class ModuleIOSparkMax implements ModuleIO {
       ModuleConfig module, Rotation2d angularOffset, DrivetrainConfig drivetrain) {
     this.angularOffset = angularOffset;
 
-    driveSparkMax = new CANSparkMax(module.driveCanId(), MotorType.kBrushless);
-    turnSparkMax = new CANSparkMax(module.turnCanId(), MotorType.kBrushless);
+    driveMotor = new CANSparkMax(module.driveCanId(), MotorType.kBrushless);
+    turnMotor = new CANSparkMax(module.turnCanId(), MotorType.kBrushless);
 
-    // factory reset, so we get the SPARK MAX to a known state before configuring them;
-    // this is useful in case a SPARK MAX is swapped out
-    if (SparkMaxBurnManager.shouldBurn()) {
-      driveSparkMax.restoreFactoryDefaults();
-      turnSparkMax.restoreFactoryDefaults();
-    }
+    driveEncoder = driveMotor.getEncoder();
+    turnAbsoluteEncoder = turnMotor.getAbsoluteEncoder(Type.kDutyCycle);
 
-    driveSparkMax.setCANTimeout(SparkMaxBurnManager.configCANTimeout);
-    turnSparkMax.setCANTimeout(SparkMaxBurnManager.configCANTimeout);
+    drivePIDController = driveMotor.getPIDController();
+    turnPIDController = turnMotor.getPIDController();
 
-    driveEncoder = driveSparkMax.getEncoder();
-    turnAbsoluteEncoder = turnSparkMax.getAbsoluteEncoder(Type.kDutyCycle);
+    SparkMaxManager.initializeAndBurn(driveMotor, () -> initDrive(module, drivetrain));
+    SparkMaxManager.initializeAndBurn(turnMotor, () -> initTurn(module, drivetrain));
 
-    drivePIDController = driveSparkMax.getPIDController();
-    turnPIDController = turnSparkMax.getPIDController();
+    drivePositionQueue =
+        SparkMaxOdometryThread.getInstance()
+            .registerSignal(() -> guardRawValue(driveMotor, driveEncoder.getPosition()));
+
+    turnPositionQueue =
+        SparkMaxOdometryThread.getInstance()
+            .registerSignal(() -> guardRawValue(turnMotor, turnAbsoluteEncoder.getPosition()));
+  }
+
+  private boolean initDrive(ModuleConfig module, DrivetrainConfig drivetrain) {
+    // spotless:off
+    int errors = 0;
 
     // apply position and velocity conversion factors for the driving encoder;
     // the native units for position and velocity are rotations and RPM, respectively,
     // but we want meters and meters per second to use with WPILib's swerve APIs
-    driveEncoder.setPositionConversionFactor(drivetrain.driveEncoderPositionFactor());
-    driveEncoder.setVelocityConversionFactor(drivetrain.driveEncoderVelocityFactor());
+    errors += SparkMaxManager.check(driveEncoder.setPositionConversionFactor(drivetrain.driveEncoderPositionFactor()));
+    errors += SparkMaxManager.check(driveEncoder.setVelocityConversionFactor(drivetrain.driveEncoderVelocityFactor()));
 
     // these parameters control the behavior of the velocity filter on the SPARK MAX
     // default settings result in about 100+ms delay due to multiple samples being
     // taken to filter out noise in the velocity readings; reducing depth results
     // in higher noise in data, but reduces the lag
-    driveEncoder.setMeasurementPeriod(DriveConstants.driveEncoderMeasurementPeriod);
-    driveEncoder.setAverageDepth(DriveConstants.driveEncoderMeasurementDepth);
+    errors += SparkMaxManager.check(driveEncoder.setMeasurementPeriod(DriveConstants.driveEncoderMeasurementPeriod));
+    errors += SparkMaxManager.check(driveEncoder.setAverageDepth(DriveConstants.driveEncoderMeasurementDepth));
 
-    // apply position and velocity conversion factors for the turning encoder;
-    // we want these in radians and radians per second to use with WPILib's swerve APIs
-    turnAbsoluteEncoder.setPositionConversionFactor(drivetrain.turnEncoderPositionFactor());
-    turnAbsoluteEncoder.setVelocityConversionFactor(drivetrain.turnEncoderVelocityFactor());
+    errors += SparkMaxManager.check(drivePIDController.setOutputRange(-1, 1));
 
-    turnAbsoluteEncoder.setAverageDepth(DriveConstants.turnEncoderMeasurementDepth);
+    errors += SparkMaxManager.check(driveMotor.setSmartCurrentLimit(drivetrain.driveMotor().currentLimit()));
+    errors += SparkMaxManager.check(driveMotor.enableVoltageCompensation(drivetrain.driveMotor().nominalVoltage()));
 
-    // invert the turning encoder, since the output shaft rotates in the opposite
-    // direction of the steering motor in the MAXSwerve Module
-    turnAbsoluteEncoder.setInverted(module.turnMotorInverted());
-
-    // enable PID wrap around for the turning motor; this will allow the PID controller
-    // to go through 0 to get to the setpoint i.e. going from 350 degrees to 10 degrees
-    // will go through 0 rather than the other direction which is a longer route
-    turnPIDController.setPositionPIDWrappingEnabled(true);
-    turnPIDController.setPositionPIDWrappingMinInput(0);
-    turnPIDController.setPositionPIDWrappingMaxInput(drivetrain.turnEncoderPositionFactor());
-
-    // set the PID Controller to use the duty cycle encoder on the swerve
-    // module instead of the built in NEO550 encoder
-    turnPIDController.setFeedbackDevice(turnAbsoluteEncoder);
-
-    drivePIDController.setOutputRange(-1, 1);
-    turnPIDController.setOutputRange(-1, 1);
-
-    driveSparkMax.setSmartCurrentLimit(drivetrain.driveMotor().currentLimit());
-    turnSparkMax.setSmartCurrentLimit(drivetrain.turnMotor().currentLimit());
-    driveSparkMax.enableVoltageCompensation(drivetrain.driveMotor().nominalVoltage());
-    turnSparkMax.enableVoltageCompensation(drivetrain.turnMotor().nominalVoltage());
-
-    driveEncoder.setPosition(0.0);
-
-    // make SetParameter calls non-blocking
-    driveSparkMax.setCANTimeout(0);
-    turnSparkMax.setCANTimeout(0);
+    errors += SparkMaxManager.check(driveEncoder.setPosition(0.0));
 
     // tune CAN bus utilization, see:
     // https://docs.revrobotics.com/sparkmax/operating-modes/control-interfaces#periodic-status-frames
@@ -137,50 +114,86 @@ public class ModuleIOSparkMax implements ModuleIO {
     final var odometryFramePeriod = (int) (1000.0 / Constants.odometryFrequency);
     final var velocityFramePeriod = (int) (1000.0 * Constants.cyclePeriodSeconds);
 
-    // drive motor
-    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus0, 100);
-    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus1, velocityFramePeriod);
-    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus2, odometryFramePeriod);
-    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus3, 65535);
-    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus4, 65535);
-    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus5, 65535);
-    driveSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus6, 65535);
+    errors += SparkMaxManager.check(driveMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus0, 100));
+    errors += SparkMaxManager.check(driveMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus1, velocityFramePeriod));
+    errors += SparkMaxManager.check(driveMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus2, odometryFramePeriod));
+    errors += SparkMaxManager.check(driveMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus3, 65535));
+    errors += SparkMaxManager.check(driveMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus4, 65535));
+    errors += SparkMaxManager.check(driveMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus5, 65535));
+    errors += SparkMaxManager.check(driveMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus6, 65535));
 
-    // turn motor
-    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus0, 100);
-    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus1, 100);
-    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus2, 100);
-    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus3, 65535);
-    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus4, 65535);
-    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus5, odometryFramePeriod);
-    turnSparkMax.setPeriodicFramePeriod(PeriodicFrame.kStatus6, velocityFramePeriod);
+    // spotless:on
+    return errors == 0;
+  }
 
-    drivePositionQueue =
-        SparkMaxOdometryThread.getInstance()
-            .registerSignal(() -> guardRawValue(driveSparkMax, driveEncoder.getPosition()));
+  private boolean initTurn(ModuleConfig module, DrivetrainConfig drivetrain) {
+    // spotless:off
+    int errors = 0;
 
-    turnPositionQueue =
-        SparkMaxOdometryThread.getInstance()
-            .registerSignal(() -> guardRawValue(turnSparkMax, turnAbsoluteEncoder.getPosition()));
+    // apply position and velocity conversion factors for the turning encoder;
+    // we want these in radians and radians per second to use with WPILib's swerve APIs
+    errors += SparkMaxManager.check(turnAbsoluteEncoder.setPositionConversionFactor(drivetrain.turnEncoderPositionFactor()));
+    errors += SparkMaxManager.check(turnAbsoluteEncoder.setVelocityConversionFactor(drivetrain.turnEncoderVelocityFactor()));
 
-    if (SparkMaxBurnManager.shouldBurn()) {
-      driveSparkMax.burnFlash();
-      turnSparkMax.burnFlash();
-    }
+    errors += SparkMaxManager.check(turnAbsoluteEncoder.setAverageDepth(DriveConstants.turnEncoderMeasurementDepth));
+
+    // invert the turning encoder, since the output shaft rotates in the opposite
+    // direction of the steering motor in the MAXSwerve Module
+    errors += SparkMaxManager.check(turnAbsoluteEncoder.setInverted(module.turnMotorInverted()));
+
+    // enable PID wrap around for the turning motor; this will allow the PID controller
+    // to go through 0 to get to the setpoint i.e. going from 350 degrees to 10 degrees
+    // will go through 0 rather than the other direction which is a longer route
+    errors += SparkMaxManager.check(turnPIDController.setPositionPIDWrappingEnabled(true));
+    errors += SparkMaxManager.check(turnPIDController.setPositionPIDWrappingMinInput(0));
+    errors += SparkMaxManager.check(turnPIDController.setPositionPIDWrappingMaxInput(drivetrain.turnEncoderPositionFactor()));
+
+    // set the PID Controller to use the duty cycle encoder on the swerve
+    // module instead of the built in NEO550 encoder
+    errors += SparkMaxManager.check(turnPIDController.setFeedbackDevice(turnAbsoluteEncoder));
+    errors += SparkMaxManager.check(turnPIDController.setOutputRange(-1, 1));
+
+    errors += SparkMaxManager.check(turnMotor.setSmartCurrentLimit(drivetrain.turnMotor().currentLimit()));
+    errors += SparkMaxManager.check(turnMotor.enableVoltageCompensation(drivetrain.turnMotor().nominalVoltage()));
+
+    // tune CAN bus utilization, see:
+    // https://docs.revrobotics.com/sparkmax/operating-modes/control-interfaces#periodic-status-frames
+    //
+    // status 0 - AppliedXyzOutput, Faults, Sticky Faults, Is Follower
+    // status 1 - Motor Velocity, Temperature, Voltage, Current
+    // status 2 - Motor Position
+    // status 3 - Analog Sensor Voltage / Velocity / Position
+    // status 4 - Alternate Encoder Velocity / Position
+    // status 5 - Duty Cycle Absolute Encoder Position / Absolute Angle
+    // status 6 - Duty Cycle Absolute Encoder Velocity / Frequency
+
+    final var odometryFramePeriod = (int) (1000.0 / Constants.odometryFrequency);
+    final var velocityFramePeriod = (int) (1000.0 * Constants.cyclePeriodSeconds);
+
+    errors += SparkMaxManager.check(turnMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus0, 100));
+    errors += SparkMaxManager.check(turnMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus1, 100));
+    errors += SparkMaxManager.check(turnMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus2, 100));
+    errors += SparkMaxManager.check(turnMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus3, 65535));
+    errors += SparkMaxManager.check(turnMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus4, 65535));
+    errors += SparkMaxManager.check(turnMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus5, odometryFramePeriod));
+    errors += SparkMaxManager.check(turnMotor.setPeriodicFramePeriod(PeriodicFrame.kStatus6, velocityFramePeriod));
+
+    // spotless:on
+    return errors == 0;
   }
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
     inputs.drivePositionMeters = driveEncoder.getPosition();
     inputs.driveVelocityMetersPerSec = driveEncoder.getVelocity();
-    inputs.driveAppliedVolts = driveSparkMax.getAppliedOutput() * driveSparkMax.getBusVoltage();
-    inputs.driveCurrentAmps = driveSparkMax.getOutputCurrent();
+    inputs.driveAppliedVolts = driveMotor.getAppliedOutput() * driveMotor.getBusVoltage();
+    inputs.driveCurrentAmps = driveMotor.getOutputCurrent();
 
     inputs.turnPosition =
         Rotation2d.fromRadians(turnAbsoluteEncoder.getPosition() - angularOffset.getRadians());
     inputs.turnVelocityRadPerSec = turnAbsoluteEncoder.getVelocity();
-    inputs.turnAppliedVolts = turnSparkMax.getAppliedOutput() * turnSparkMax.getBusVoltage();
-    inputs.turnCurrentAmps = turnSparkMax.getOutputCurrent();
+    inputs.turnAppliedVolts = turnMotor.getAppliedOutput() * turnMotor.getBusVoltage();
+    inputs.turnCurrentAmps = turnMotor.getOutputCurrent();
 
     inputs.odometryDrivePositionsMeters =
         drivePositionQueue.stream().mapToDouble(Double::valueOf).toArray();
@@ -196,22 +209,22 @@ public class ModuleIOSparkMax implements ModuleIO {
 
   @Override
   public void setDriveVoltage(double volts) {
-    driveSparkMax.setVoltage(volts);
+    driveMotor.setVoltage(volts);
   }
 
   @Override
   public void setTurnVoltage(double volts) {
-    turnSparkMax.setVoltage(volts);
+    turnMotor.setVoltage(volts);
   }
 
   @Override
   public void setDriveBrakeMode(boolean enable) {
-    driveSparkMax.setIdleMode(enable ? IdleMode.kBrake : IdleMode.kCoast);
+    driveMotor.setIdleMode(enable ? IdleMode.kBrake : IdleMode.kCoast);
   }
 
   @Override
   public void setTurnBrakeMode(boolean enable) {
-    turnSparkMax.setIdleMode(enable ? IdleMode.kBrake : IdleMode.kCoast);
+    turnMotor.setIdleMode(enable ? IdleMode.kBrake : IdleMode.kCoast);
   }
 
   @Override

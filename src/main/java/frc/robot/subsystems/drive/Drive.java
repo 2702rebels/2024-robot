@@ -17,12 +17,14 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 import frc.robot.RobotState;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.Misc;
+import java.util.OptionalDouble;
 import java.util.function.Function;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -75,10 +77,16 @@ public class Drive extends SubsystemBase {
   private static final LoggedTunableNumber orientationP =
       new LoggedTunableNumber("Drive/Orientation/P", 0.3);
 
+  private static final LoggedTunableNumber steeringP =
+      new LoggedTunableNumber("Drive/Steering/P", 0.3);
+
   // orientation to maintain while lock is in place
   private double orientationLockAngleRad;
   private boolean orientationLockEnabled;
   private final PIDController orientationController;
+  private final PIDController steeringController;
+
+  private OptionalDouble steeringTurnAngleRadians = OptionalDouble.empty();
 
   private boolean stopX;
 
@@ -111,6 +119,10 @@ public class Drive extends SubsystemBase {
 
     orientationController = new PIDController(orientationP.get(), 0, 0);
     orientationController.enableContinuousInput(-Math.PI, Math.PI);
+
+    steeringController = new PIDController(steeringP.get(), 0, 0);
+    steeringController.enableContinuousInput(-Math.PI, Math.PI);
+    steeringController.setSetpoint(0);
 
     // configure AutoBuilder for PathPlanner
     AutoBuilder.configureHolonomic(
@@ -244,7 +256,7 @@ public class Drive extends SubsystemBase {
       deltaSpeed = -setpointSpeed - measuredSpeed;
     }
 
-    deltaStates[index].speedMetersPerSecond = deltaSpeed;
+    deltaStates[index].speedMetersPerSecond = Math.abs(deltaSpeed);
     deltaStates[index].angle = Rotation2d.fromRadians(deltaAngle);
   }
 
@@ -254,6 +266,10 @@ public class Drive extends SubsystemBase {
     // update controllers if tunable numbers have changed
     if (orientationP.hasChanged(callerId)) {
       orientationController.setP(orientationP.get());
+    }
+
+    if (steeringP.hasChanged(callerId)) {
+      steeringController.setP(orientationP.get());
     }
 
     for (var module : modules) {
@@ -282,6 +298,24 @@ public class Drive extends SubsystemBase {
   public void runVelocity(ChassisSpeeds speeds) {
     SwerveModuleState[] setpointStates;
     double[] setpointAngularVelocities = null;
+
+    // if steering adjustment is provided we override commanded omega
+    // with the one compute based on the steering controller PID output
+    if (steeringTurnAngleRadians.isPresent()) {
+      // if we have teleop input on rotation and do not see the tag,
+      // then do not override anything
+      final var skipOverride =
+          DriverStation.isTeleopEnabled()
+              && !Misc.epsilonEquals(speeds.omegaRadiansPerSecond, 0)
+              && !RobotState.getInstance().isTrackingTags();
+
+      if (!skipOverride) {
+        speeds.omegaRadiansPerSecond =
+            steeringController.calculate(steeringTurnAngleRadians.getAsDouble(), 0)
+                * getMaxAngularSpeedRadPerSec()
+                * 0.75; // reduce maximum rotation speed
+      }
+    }
 
     // if all commanded velocities are effectively zero and
     // robot must be stopped in X wheel arrangement, use custom setpoints
@@ -356,6 +390,13 @@ public class Drive extends SubsystemBase {
     }
   }
 
+  /** Runs characterization at the commanded voltage. */
+  public void runCharacterization(double volts) {
+    for (var module : modules) {
+      module.runCharacterization(volts, 0);
+    }
+  }
+
   /** Returns the average drive velocity in meters/sec. */
   public double getCharacterizationVelocity() {
     var driveVelocityAverage = 0.0;
@@ -397,6 +438,21 @@ public class Drive extends SubsystemBase {
   /** Returns the maximum angular speed in radians per sec */
   public double getMaxAngularSpeedRadPerSec() {
     return DriveConstants.drivetrainConfig.maxAngularSpeed();
+  }
+
+  /**
+   * Continously forces the drive subsystem to active maintain steering lock towards the goal by
+   * giving it a turn angle to adjust the current rotation by.
+   *
+   * <p>This method can be used both with teleop and autonomous modes.
+   */
+  public void steeringLock(double turnAngleRadians) {
+    steeringTurnAngleRadians = OptionalDouble.of(turnAngleRadians);
+  }
+
+  /** Releases steering lock. */
+  public void steeringUnlock() {
+    steeringTurnAngleRadians = OptionalDouble.empty();
   }
 
   /** Enables orientation lock. */
@@ -448,5 +504,38 @@ public class Drive extends SubsystemBase {
     for (var module : modules) {
       module.resetEncoders();
     }
+  }
+
+  /**
+   * Provides an "escape hatch" command to manually orient all modules to the specified rotation.
+   */
+  public Command orientModules(Rotation2d orientation) {
+    return orientModules(new Rotation2d[] {orientation, orientation, orientation, orientation});
+  }
+
+  /** Provides an "escape hatch" command to manually orient modules to the specified rotations. */
+  public Command orientModules(Rotation2d[] orientations) {
+    final var tolerance = Math.toRadians(3.0);
+    return run(() -> {
+          for (int i = 0; i < modules.length; ++i) {
+            modules[i].runSetpoint(new SwerveModuleState(0.0, orientations[i]), 0);
+          }
+        })
+        .until(
+            () -> {
+              for (var i = 0; i < modules.length; ++i) {
+                final var delta =
+                    Misc.clampAngle(
+                        modules[i].getAngle().getRadians() - orientations[i].getRadians());
+
+                if (!Misc.epsilonEquals(delta, 0, tolerance)
+                    && !Misc.epsilonEquals(delta, Math.PI, tolerance)) {
+                  return false;
+                }
+              }
+
+              return true;
+            })
+        .withName("Orient Modules");
   }
 }

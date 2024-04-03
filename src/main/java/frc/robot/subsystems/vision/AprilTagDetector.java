@@ -3,19 +3,16 @@ package frc.robot.subsystems.vision;
 import edu.wpi.first.networktables.DoubleArraySubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.PubSubOption;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 
 public class AprilTagDetector extends SubsystemBase {
-  private static final LoggedTunableNumber timeTolerance =
-      new LoggedTunableNumber("Vision/AprilTag/Time Tolerance", 150);
-
   private static final double[] EmptyDoubleArray = new double[] {};
   private final DoubleArraySubscriber subscriber;
 
-  private final AprilTag[] tags = new AprilTag[16]; // 16 april tags locations
+  private final AprilTag[] tags = new AprilTag[18]; // 16 april tags locations + 2 virtual
   private final double cutoff = 1e15; // Vision sends -3e16
 
   public AprilTagDetector() {
@@ -24,25 +21,26 @@ public class AprilTagDetector extends SubsystemBase {
             .getTable("Vision")
             .getDoubleArrayTopic("PoseArray")
             .subscribe(
-                EmptyDoubleArray, PubSubOption.keepDuplicates(false), PubSubOption.sendAll(true));
+                EmptyDoubleArray, PubSubOption.keepDuplicates(true), PubSubOption.sendAll(true));
 
     // initialize tags
     for (var i = 0; i < tags.length; ++i) {
       tags[i] = new AprilTag(i + 1);
     }
 
-    SmartDashboard.putNumber("/Vision/Exposure", 480);
+    SmartDashboard.putNumber("Vision/Exposure", 480);
   }
 
   public void periodic() {
-    // convert from milliseconds to seconds
-    final var timeToleranceSeconds = timeTolerance.get() / 1e3;
+    final var localTimestamp = Timer.getFPGATimestamp();
+    var visionTimestamp = 0.0;
 
     final var queue = subscriber.readQueue();
     if (queue.length > 0) {
       for (var i = 0; i < queue.length; ++i) {
         final var timestamp = queue[i].timestamp / 1E6;
         final var frame = queue[i].value;
+        visionTimestamp = timestamp;
 
         // array contains consecutive 3 tuples of the following format
         // [x, y, z]
@@ -55,16 +53,9 @@ public class AprilTagDetector extends SubsystemBase {
 
           final var x = frame[offset];
           if (Math.abs(x) > cutoff) {
-            // if the tag disappears keep the last known position for
-            // the 'tolerance' window to avoid jitterring when the tag
-            // come in and out of view
-            // if (timestamp - tags[j].timestamp < timeToleranceSeconds) {
-            //   continue;
-            // }
-
-            // keep the last known vector but set tracked to false
+            // keep the last known vector and timestamp but set tracked to false
+            // allows using historical observation if we have relevant odometry
             tags[j].tracked = false;
-            tags[j].timestamp = timestamp;
           } else {
             tags[j].tracked = true;
             tags[j].x = x;
@@ -76,6 +67,12 @@ public class AprilTagDetector extends SubsystemBase {
       }
     }
 
+    Logger.recordOutput("Vision/AprilTags/Queue Length", queue.length);
+    if (queue.length > 0) {
+      Logger.recordOutput("Vision/AprilTags/Timestamp", visionTimestamp);
+      Logger.recordOutput("Vision/AprilTags/Delay", localTimestamp - visionTimestamp);
+    }
+
     for (var i = 0; i < tags.length; ++i) {
       final var key = "Vision/AprilTags/" + tags[i].id;
       Logger.recordOutput(key + "/Tracked", tags[i].tracked);
@@ -85,7 +82,22 @@ public class AprilTagDetector extends SubsystemBase {
     }
   }
 
+  /**
+   * Gets the tag with the specified identifier.
+   *
+   * @param id field-specific identifier (one-based)
+   */
   public AprilTag getTag(int id) {
     return tags[id - 1];
+  }
+
+  /** Determines whether tags of interest are tracked. */
+  public boolean areTagsTracked(int... tagIds) {
+    for (var id : tagIds) {
+      if (tags[id - 1].tracked) {
+        return true;
+      }
+    }
+    return false;
   }
 }

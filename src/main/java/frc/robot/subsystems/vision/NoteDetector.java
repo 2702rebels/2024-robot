@@ -9,12 +9,13 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.AutoLogOutput;
+import org.littletonrobotics.junction.Logger;
 
 public class NoteDetector extends SubsystemBase {
-  private static final LoggedTunableNumber detectionProbabilityCutoff =
-      new LoggedTunableNumber("Vision/NoteDetector/Cutoff P", 0.7);
-  private static final LoggedTunableNumber detectionTimeCutoff =
-      new LoggedTunableNumber("Vision/NoteDetector/Cutoff T", 1);
+  // spotless:off
+  private static final LoggedTunableNumber detectionProbabilityCutoff = new LoggedTunableNumber("Vision/NoteDetector/Cutoff P", 0.7);
+  private static final LoggedTunableNumber detectionTimeCutoff = new LoggedTunableNumber("Vision/NoteDetector/Cutoff T", 1);
+  // spotless:on
 
   private static final double[] EmptyDoubleArray = new double[] {};
   private final DoubleArraySubscriber subscriber;
@@ -43,12 +44,16 @@ public class NoteDetector extends SubsystemBase {
   }
 
   public void periodic() {
+    final var localTimestamp = Timer.getFPGATimestamp();
+    var visionTimestamp = 0.0;
+
     final var cutoff = detectionProbabilityCutoff.get();
     final var queue = subscriber.readQueue();
     if (queue.length > 0) {
       for (var i = 0; i < queue.length; ++i) {
         final var timestamp = queue[i].timestamp / 1E6;
         final var frame = queue[i].value;
+        visionTimestamp = timestamp;
 
         // keep track of the note detected with highest probability
         // if multiple notes are detected within the frame
@@ -104,9 +109,14 @@ public class NoteDetector extends SubsystemBase {
       }
     }
 
+    Logger.recordOutput("Vision/NoteDetector/Queue Length", queue.length);
+    if (queue.length > 0) {
+      Logger.recordOutput("Vision/NoteDetector/Timestamp", visionTimestamp);
+      Logger.recordOutput("Vision/NoteDetector/Delay", localTimestamp - visionTimestamp);
+    }
+
     if (trackedNote != null) {
-      final var timestamp = Timer.getFPGATimestamp();
-      hasTrackedNote = timestamp - trackedNote.timestamp <= detectionTimeCutoff.get();
+      hasTrackedNote = localTimestamp - trackedNote.timestamp <= detectionTimeCutoff.get();
     }
   }
 

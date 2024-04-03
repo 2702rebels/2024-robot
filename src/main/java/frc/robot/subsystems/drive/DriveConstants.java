@@ -50,11 +50,11 @@ public final class DriveConstants {
   /** Drivetrain configuration */
   public static final DrivetrainConfig drivetrainConfig =
       new DrivetrainConfig(
-          Units.inchesToMeters(3.0), // wheel diameter
+          Units.inchesToMeters(2.84), // wheel diameter
           Units.inchesToMeters(21.5), // width X
           Units.inchesToMeters(21.5), // width Y
           5.0, // max linear speed
-          5.0, // max linear acceleration
+          4.0, // max linear acceleration
           driveMotorConfig,
           turnMotorConfig);
 
@@ -75,9 +75,9 @@ public final class DriveConstants {
   public static final ModuleTunableFactors moduleFactors =
       switch (Constants.currentMode) {
         case REAL, REPLAY -> new ModuleTunableFactors(
-            new MotorTunableFactorsPID(0.1, 0.0, 0.0, 0.0),
+            new MotorTunableFactorsPID(0.3, 0.0, 0.0, 0.0),
             new MotorTunableFactorsPID(2.5, 0.0, 0.0, 0.0),
-            new MotorTunableFactorsFF(0.0, 2.4, 0.0));
+            new MotorTunableFactorsFF(0.2, 2.6, 0.0));
         default -> new ModuleTunableFactors(
             new MotorTunableFactorsPID(0.0, 0.0, 0.0, 0.0),
             new MotorTunableFactorsPID(0.0, 0.0, 0.0, 0.0),

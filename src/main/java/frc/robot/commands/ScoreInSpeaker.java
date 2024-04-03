@@ -1,117 +1,149 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.commands;
 
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.RobotState;
 import frc.robot.subsystems.drive.Drive;
-import frc.robot.subsystems.led.LedSubsystem;
 import frc.robot.subsystems.pivot.Pivot;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.vision.AprilTag;
 import frc.robot.subsystems.vision.AprilTagDetector;
 import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.LoggedDashboardBoolean;
 
 public class ScoreInSpeaker extends Command {
-  private Drive drive;
-  private Shooter shooter;
-  private Pivot pivot;
-  private AprilTagDetector aprilTagDetector;
+  // spotless:off
+  private static final LoggedDashboardBoolean disableOdometryHistory = new LoggedDashboardBoolean("Score/DisableOdometryHistory", false);
+  // spotless:on
+
+  private final Drive drive;
+  private final Shooter shooter;
+  private final Pivot pivot;
+  private final AprilTagDetector aprilTagDetector;
+  private final RobotState state;
   private AprilTag tag;
-  private LedSubsystem leds;
+  private boolean goodToShoot = false;
 
-  private boolean isStillTracking = false;
-
-  /** Creates a new ScoreInSpeaker. */
   public ScoreInSpeaker(
-      Drive drive,
-      Shooter shooter,
-      Pivot pivot,
-      AprilTagDetector aprilTagDetector,
-      LedSubsystem leds) {
+      Drive drive, Shooter shooter, Pivot pivot, AprilTagDetector aprilTagDetector) {
     this.drive = drive;
     this.shooter = shooter;
     this.pivot = pivot;
     this.aprilTagDetector = aprilTagDetector;
-    this.leds = leds;
+    this.state = RobotState.getInstance();
 
-    addRequirements(shooter, pivot, leds);
+    addRequirements(shooter, pivot);
   }
 
-  // Called when the command is initially scheduled.
   @Override
   public void initialize() {
-    // Get the tag we need to be scoring on.
-    if (DriverStation.getAlliance().get() == Alliance.Red) {
-      tag = aprilTagDetector.getTag(3);
-    } else {
-      tag = aprilTagDetector.getTag(7);
-    }
-
-    shooter.spinUp(4000);
-    pivot.setRequestedAngle(30);
-    leds.setTracking(false);
-    isStillTracking = false;
+    // get the tag we need to be scoring on
+    tag = aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 4 : 7);
+    goodToShoot = false;
   }
 
-  // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
-    final var pivotAngle = Math.atan2(-2.3, tag.z) * (180 / Math.PI);
+    final var timestamp = Timer.getFPGATimestamp();
+
+    var z = tag.z;
+    var x = tag.x;
+
+    // if we have historical poses, use them to correct the vector
+    // based on the difference between current and historic poses
+    if (state.hasSampledPoses()) {
+      final var poseThen = state.findPoseAt(tag.timestamp);
+      final var poseNow = state.findPoseAt(timestamp);
+      final var translationThen = poseThen.getTranslation();
+      final var translationNow = poseNow.getTranslation();
+      final var rotationThen = poseThen.getRotation();
+      final var rotationNow = poseNow.getRotation();
+
+      // convert from vision frame of reference to field frame of reference
+      final var fieldTranslation = new Translation2d(-z, x).rotateBy(rotationThen);
+      final var dx = translationNow.getX() - translationThen.getX();
+      final var dy = translationNow.getY() - translationThen.getY();
+
+      // vector to the vision target in field frame of reference
+      final var targetVector =
+          new Translation2d(fieldTranslation.getX() + dx, fieldTranslation.getY() + dy);
+      Logger.recordOutput("TrackedShooting/Target", translationNow.plus(targetVector));
+
+      // convert target vector back to the vision frame of reference
+      final var t = targetVector.rotateBy(rotationNow.unaryMinus());
+      x = t.getY();
+      z = -t.getX();
+    }
+
+    final var distToTag1 = Math.floor(getHypotenus(z, Math.abs(x)) * 100) / 100;
+    Logger.recordOutput("TrackedShooting/Tag1Dist", distToTag1);
+
+    // -2.2m -- target height over ground
+    final var pivotAngle = Math.toDegrees(Math.atan2(-2.2, distToTag1));
     Logger.recordOutput("TrackedShooting/PivotAngle", pivotAngle);
 
-    final var turnAngle = Math.atan2(tag.x, tag.z);
-    Logger.recordOutput("TrackedShooting/TurnAngle", turnAngle);
+    final var turnAngle = Math.atan2(x, z);
+    Logger.recordOutput("TrackedShooting/TurnAngle", Math.toDegrees(turnAngle));
 
-    final var speed = tag.z > 4.0 ? 4000 : 3000;
-    Logger.recordOutput("TrackedShooter/Speed", speed);
+    // Calculate the interpolation between the two distance->speed values.
+    // y0(x1-x)+y1(x-x0)
+    // _________________
+    //      x1-x0
+    final var maxDist = 7.0;
+    final var minDist = 2.0;
+    final var maxSpeed = 4000;
+    final var minSpeed = 2500;
+    final var lerpSpeed =
+        (minSpeed * (maxDist - distToTag1) + maxSpeed * (distToTag1 - minDist))
+            / (maxDist - minDist);
+    Logger.recordOutput("TrackedShooting/LerpSpeed", lerpSpeed);
 
-    if (tag.tracked) {
-      if (!isStillTracking) {
-        isStillTracking = true;
-        leds.setTracking(true);
-      }
-      drive.enableOrientationLock(drive.getRotation().getRadians() - turnAngle);
+    // consider tag acquired if we see one or we have seen it within the last 2 seconds
+    // so that we can use recent odometry compensation to steer us towards it
+    final var targetAcquired =
+        tag.tracked || (timestamp - tag.timestamp) < 2 && !disableOdometryHistory.get();
 
-      // Hack to update drive train directly if running in auto. Instead of the hack to piggyback
-      // off the teleop drive command.
-      if (DriverStation.isAutonomous()) {
-        final var speeds =
-            ChassisSpeeds.fromFieldRelativeSpeeds(
-                0, 0, drive.getOrientationLockRotation(), drive.getRotation());
-        drive.runVelocity(speeds);
-      }
-
+    if (targetAcquired) {
+      drive.steeringLock(turnAngle);
       pivot.setRequestedAngle(-pivotAngle);
-      shooter.spinUp(speed);
+      shooter.setSpeed(lerpSpeed);
 
       if (pivot.isAtGoal()
-          && shooter.isAtSpeed(speed)
-          && Math.abs((turnAngle * 180 / Math.PI)) < 3) {
+          && shooter.isAtSpeed(lerpSpeed)
+          && Math.abs((Math.toDegrees(turnAngle))) < 1) {
+        goodToShoot = true;
         shooter.feedOut();
+      } else {
+        goodToShoot = false;
       }
     } else {
-      if (isStillTracking) {
-        isStillTracking = false;
-        leds.setTracking(false);
-      }
+      drive.steeringUnlock();
+    }
+    Logger.recordOutput("TrackedShooting/GoodToShoot", goodToShoot);
+
+    // runs active steering if needed in autonomous mode
+    if (DriverStation.isAutonomous()) {
+      drive.runVelocity(new ChassisSpeeds());
     }
   }
 
-  // Called once the command ends or is interrupted.
   @Override
   public void end(boolean interrupted) {
+    drive.steeringUnlock();
     shooter.stop();
     pivot.setRequestedAngle(20);
   }
 
-  // Returns true when the command should end.
   @Override
   public boolean isFinished() {
     return !shooter.hasGamePiece();
+  }
+
+  private double getHypotenus(double a, double b) {
+    return Math.sqrt(a * a + b * b);
   }
 }
