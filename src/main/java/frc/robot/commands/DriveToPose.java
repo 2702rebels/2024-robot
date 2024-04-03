@@ -13,6 +13,7 @@ import frc.robot.Constants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.util.LoggedTunableNumber;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
@@ -27,10 +28,10 @@ public class DriveToPose extends Command {
       new LoggedTunableNumber("Drive/Pose/Drive Tolerance", 0.05);
   private static final LoggedTunableNumber driveMaxV =
       new LoggedTunableNumber(
-          "Drive/Pose/Drive Max V", DriveConstants.drivetrainConfig.maxLinearSpeed());
+          "Drive/Pose/Drive Max V", DriveConstants.drivetrainConfig.maxLinearSpeed() * 0.8);
   private static final LoggedTunableNumber driveMaxA =
       new LoggedTunableNumber(
-          "Drive/Pose/Drive Max A", DriveConstants.drivetrainConfig.maxLinearAcceleration());
+          "Drive/Pose/Drive Max A", DriveConstants.drivetrainConfig.maxLinearAcceleration() * 0.8);
   private static final LoggedTunableNumber thetaP =
       new LoggedTunableNumber("Drive/Pose/Theta P", 1.5);
   private static final LoggedTunableNumber thetaI =
@@ -51,6 +52,8 @@ public class DriveToPose extends Command {
       new LoggedTunableNumber("Drive/Pose/FF Max Distance", 0.8);
 
   protected Supplier<Pose2d> poseSupplier;
+  private final boolean stopAtGoal;
+  private final BooleanSupplier stopCondition;
   private final Drive drive;
   private boolean running;
   private Translation2d lastSetpointTranslation;
@@ -73,12 +76,18 @@ public class DriveToPose extends Command {
   private double thetaErrorAbs;
 
   public DriveToPose(Drive drive, Pose2d pose) {
-    this(drive, () -> pose);
+    this(drive, () -> pose, true, null);
   }
 
-  public DriveToPose(Drive drive, Supplier<Pose2d> poseSupplier) {
+  public DriveToPose(
+      Drive drive,
+      Supplier<Pose2d> poseSupplier,
+      boolean stopAtGoal,
+      BooleanSupplier stopCondition) {
     this.drive = drive;
     this.poseSupplier = poseSupplier;
+    this.stopAtGoal = stopAtGoal;
+    this.stopCondition = stopCondition;
     addRequirements(drive);
     thetaController.enableContinuousInput(-Math.PI, Math.PI);
   }
@@ -210,12 +219,19 @@ public class DriveToPose extends Command {
         new Pose2d(
             lastSetpointTranslation, new Rotation2d(thetaController.getSetpoint().position)));
     Logger.recordOutput("DriveToPose/Goal", desiredPose);
+    Logger.recordOutput("DriveToPose/DriveAtGoal", driveController.atGoal());
+    Logger.recordOutput("DriveToPose/ThetaAtGoal", thetaController.atGoal());
   }
 
   @Override
   public void end(boolean interrupted) {
     running = false;
     drive.stop();
+  }
+
+  @Override
+  public boolean isFinished() {
+    return stopAtGoal && atGoal() && (stopCondition == null || stopCondition.getAsBoolean());
   }
 
   public boolean atGoal() {

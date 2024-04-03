@@ -239,10 +239,7 @@ public class CommandsFactory {
               shooter.reverseFlywheel();
             },
             () -> {},
-            (interrupted) -> {
-              shooter.stopFeed();
-              shooter.stop();
-            },
+            (interrupted) -> shooter.stop(),
             () -> !shooter.isFrontBeamTripped(),
             shooter)
         .andThen(feedIn())
@@ -330,6 +327,26 @@ public class CommandsFactory {
   /** Resets pose. */
   public Command setPose(Supplier<Pose2d> pose) {
     return Commands.runOnce(() -> drive.setPose(pose.get()), drive);
+  }
+
+  /** Commands robot to drive to the supplied pose. */
+  public Command driveToPose(
+      Supplier<Pose2d> pose, boolean stopAtGoal, BooleanSupplier stopCondition) {
+    return new DriveToPose(drive, pose, stopAtGoal, stopCondition);
+  }
+
+  public Command driveToPose(Pose2d pose) {
+    return new DriveToPose(drive, pose);
+  }
+
+  /** Drives to note via vision. */
+  public Command driveToNote() {
+    return new DriveToNoteVision(drive, noteDetector, intake, shooter);
+  }
+
+  /** Commands robot to drive and intake the note via vision. */
+  public Command autoIntakeViaVision() {
+    return driveToNote().deadlineWith(intake());
   }
 
   public Command trapShot() {

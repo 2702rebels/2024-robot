@@ -17,7 +17,6 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.CommandsFactory;
 import frc.robot.commands.CommandsFactory.LedMode;
-import frc.robot.commands.DriveToNoteNaive;
 import frc.robot.commands.DriveTrajectory;
 import frc.robot.commands.FeedForwardCharacterization;
 import frc.robot.subsystems.climb.Climb;
@@ -51,7 +50,6 @@ import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TrajectoryLoader;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
@@ -149,9 +147,8 @@ public class RobotContainer {
    * Creates new command that drives specified trajectory with intake running until game piece is
    * acquired.
    */
-  private Command driveAndIntake(
-      String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
-    return new DriveTrajectory(trajectories.get(trajectoryName), resetOdometry, true, drive)
+  private Command driveAndIntake(String trajectoryName, double timeoutSeconds) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), false, true, drive)
         .until(shooter::isFrontBeamTripped)
         .alongWith(commands.intake())
         .withTimeout(timeoutSeconds);
@@ -161,19 +158,47 @@ public class RobotContainer {
    * Creates new command that drives specified trajectory then attempts to locate the note with
    * vision and drives towards it with intake running until game piece is acquired.
    */
-  private Command driveThenIntake(
-      String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
-    return new DriveTrajectory(trajectories.get(trajectoryName), resetOdometry, true, drive)
+  private Command driveThenIntake(String trajectoryName, double timeoutSeconds) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), false, true, drive)
+        .andThen(Commands.waitSeconds(0.06)) // note detection vision has a perceived lag of 60ms
+        .andThen(commands.driveToNote().deadlineWith(commands.intake()))
+        .withTimeout(timeoutSeconds);
+  }
+
+  /**
+   * Creates new command that drives specified trajectory then attempts to locate the note with
+   * vision and drives towards it with intake running until game piece is acquired.
+   *
+   * <p>This version has a fallback to drive to the note supplied location in case vision failed.
+   */
+  private Command driveThenIntakeWithFallback(
+      String trajectoryName, Pose2d notePose, double timeoutSeconds) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), false, true, drive)
         .andThen(Commands.waitSeconds(0.06)) // note detection vision has a perceived lag of 60ms
         .andThen(
-            new DriveToNoteNaive(drive, noteDetector, intake, shooter)
+            Commands.either(
+                    commands.driveToNote(),
+                    commands.driveToPose(
+                        FieldConstants.getFieldPose(notePose),
+                        true,
+                        shooter::isFrontBeamTrippedAndTimeout),
+                    noteDetector::hasTrackedNote)
                 .deadlineWith(commands.intake()))
         .withTimeout(timeoutSeconds);
   }
 
-  private Command driveTrajectory(
-      String trajectoryName, double timeoutSeconds, boolean resetOdometry) {
-    return new DriveTrajectory(trajectories.get(trajectoryName), resetOdometry, true, drive)
+  private Command intakeWithFallback(Pose2d notePose, double timeoutSeconds) {
+    return Commands.either(
+            commands.driveToNote(),
+            commands.driveToPose(
+                FieldConstants.getFieldPose(notePose), true, shooter::isFrontBeamTrippedAndTimeout),
+            noteDetector::hasTrackedNote)
+        .deadlineWith(commands.intake())
+        .withTimeout(timeoutSeconds);
+  }
+
+  private Command driveTrajectory(String trajectoryName, double timeoutSeconds) {
+    return new DriveTrajectory(trajectories.get(trajectoryName), false, true, drive)
         .withTimeout(timeoutSeconds);
   }
 
@@ -182,117 +207,172 @@ public class RobotContainer {
     return commands.scoreInSpeaker().withTimeout(3);
   }
 
-  /** Creates new command sequence for a default auto with specific trajectories. */
-  private Command defaultAuto(String trajectory1, String trajectory2) {
-    return Commands.sequence(
-        scoreInSpeakerAuto(),
-        driveAndIntake(trajectory1, 3, true),
-        scoreInSpeakerAuto(),
-        driveAndIntake(trajectory2, 4, false));
-  }
+  // private Command defaultAuto(String trajectory1, String trajectory2) {
+  //   return Commands.sequence(
+  //       scoreInSpeakerAuto(),
+  //       driveAndIntake(trajectory1, 3, true),
+  //       scoreInSpeakerAuto(),
+  //       driveAndIntake(trajectory2, 4, false));
+  // }
 
-  private Command defaultAuto(String trajectory) {
-    return Commands.sequence(
-        scoreInSpeakerAuto(), driveAndIntake(trajectory, 3, true), scoreInSpeakerAuto());
-  }
+  // private Command defaultAuto(String trajectory) {
+  //   return Commands.sequence(
+  //       scoreInSpeakerAuto(), driveAndIntake(trajectory, 3, true), scoreInSpeakerAuto());
+  // }
 
-  private Command defaultAuto(Supplier<Pose2d> pose, String trajectory) {
-    return Commands.sequence(
-        commands.setPose(pose),
-        scoreInSpeakerAuto(),
-        driveAndIntake(trajectory, 3, false),
-        scoreInSpeakerAuto());
-  }
+  // private Command defaultAuto(Supplier<Pose2d> pose, String trajectory) {
+  //   return Commands.sequence(
+  //       commands.setPose(pose),
+  //       scoreInSpeakerAuto(),
+  //       driveAndIntake(trajectory, 3, false),
+  //       scoreInSpeakerAuto());
+  // }
 
-  private Command defaultAuto(Supplier<Pose2d> pose, String... trajectories) {
-    final var sequence = new Command[1 + trajectories.length * 2];
-    sequence[0] = commands.setPose(pose);
-    var offset = 1;
-    for (var trajectory : trajectories) {
-      sequence[offset] = scoreInSpeakerAuto();
-      sequence[offset + 1] = driveAndIntake(trajectory, 4, false);
-      offset += 2;
-    }
+  // private Command defaultAuto(Supplier<Pose2d> pose, String... trajectories) {
+  //   final var sequence = new Command[1 + trajectories.length * 2];
+  //   sequence[0] = commands.setPose(pose);
+  //   var offset = 1;
+  //   for (var trajectory : trajectories) {
+  //     sequence[offset] = scoreInSpeakerAuto();
+  //     sequence[offset + 1] = driveAndIntake(trajectory, 4, false);
+  //     offset += 2;
+  //   }
 
-    return Commands.sequence(sequence);
-  }
+  //   return Commands.sequence(sequence);
+  // }
 
-  private Command waterlooAuto(Supplier<Pose2d> pose, String... trajectories) {
-    return Commands.sequence(
-        commands.setPose(pose),
-        scoreInSpeakerAuto(),
-        driveAndIntake(trajectories[0], 4, false),
-        driveTrajectory(trajectories[1], 3, false),
-        scoreInSpeakerAuto());
-  }
+  // private Command waterlooAuto(Supplier<Pose2d> pose, String... trajectories) {
+  //   return Commands.sequence(
+  //       commands.setPose(pose),
+  //       scoreInSpeakerAuto(),
+  //       driveAndIntake(trajectories[0], 4, false),
+  //       driveTrajectory(trajectories[1], 3, false),
+  //       scoreInSpeakerAuto());
+  // }
 
   /** Sets up our auto chooser and auto objects. */
   private void configureAutoRoutines() {
-    autoChooser.addOption(
-        "Amp Auto",
-        defaultAuto(FieldConstants.getInitialPose(FieldConstants.initialAmpSide), "InitAmpToNote"));
-
-    autoChooser.addOption("Center Auto", defaultAuto("InitCenterToNote"));
-    autoChooser.addOption("Load Auto", defaultAuto("InitLoadToNote"));
-
-    autoChooser.addOption(
-        "Amp Auto 1",
-        defaultAuto(
-            FieldConstants.getInitialPose(FieldConstants.initialAmpSide),
-            "InitAmpToNote",
-            "AmpToNote1"));
-
-    autoChooser.addOption(
-        "Amp Auto 2",
-        defaultAuto(
-            FieldConstants.getInitialPose(FieldConstants.initialAmpSide),
-            "InitAmpToNote",
-            "AmpToNote2"));
-
-    autoChooser.addOption(
-        "Amp Auto Grand",
-        defaultAuto(
-            FieldConstants.getInitialPose(FieldConstants.initialAmpSide),
-            "InitAmpToNote",
-            "AmpToNote1",
-            "Note1ToShoot1",
-            "Shoot1ToNote2"));
-
-    autoChooser.addOption(
-        "Wateroo Auto",
-        waterlooAuto(
-            FieldConstants.getInitialPose(FieldConstants.initialSourceSide),
-            "WaterlooPath1",
-            "WaterlooPath2"));
-
-    autoChooser.addOption("Center Auto 1", defaultAuto("InitCenterToNote", "CenterToNote1"));
-    autoChooser.addOption("Center Auto 2", defaultAuto("InitCenterToNote", "CenterToNote2"));
-    autoChooser.addOption("Center Auto 3", defaultAuto("InitCenterToNote", "CenterToNote3"));
-    autoChooser.addOption("Center Auto 4", defaultAuto("InitCenterToNote", "CenterToNote4"));
-    autoChooser.addOption("Load Auto 5", defaultAuto("InitLoadToNote", "StageToNote5"));
+    // OLD AUTO ROUTINES -- DO NOT USE
+    // STARTING POSITIONS ARE DIFFERENT, NO VISION, NO POSE FALLBACK
+    // autoChooser.addOption(
+    //     "Amp Auto",
+    //     defaultAuto(FieldConstants.getFieldPose(FieldConstants.initialAmp), "InitAmpToNote"));
+    // autoChooser.addOption("Center Auto", defaultAuto("InitCenterToNote"));
+    // autoChooser.addOption("Load Auto", defaultAuto("InitLoadToNote"));
+    // autoChooser.addOption(
+    //     "Amp Auto 1",
+    //     defaultAuto(
+    //         FieldConstants.getFieldPose(FieldConstants.initialAmp), "InitAmpToNote",
+    // "AmpToNote1"));
+    // autoChooser.addOption(
+    //     "Amp Auto 2",
+    //     defaultAuto(
+    //         FieldConstants.getFieldPose(FieldConstants.initialAmp), "InitAmpToNote",
+    // "AmpToNote2"));
+    // autoChooser.addOption(
+    //     "Amp Auto Grand",
+    //     defaultAuto(
+    //         FieldConstants.getFieldPose(FieldConstants.initialAmp),
+    //         "InitAmpToNote",
+    //         "AmpToNote1",
+    //         "Note1ToShoot1",
+    //         "Shoot1ToNote2"));
+    // autoChooser.addOption(
+    //     "Wateroo Auto",
+    //     waterlooAuto(
+    //         FieldConstants.getFieldPose(FieldConstants.initialSource),
+    //         "WaterlooPath1",
+    //         "WaterlooPath2"));
+    // autoChooser.addOption("Center Auto 1", defaultAuto("InitCenterToNote", "CenterToNote1"));
+    // autoChooser.addOption("Center Auto 2", defaultAuto("InitCenterToNote", "CenterToNote2"));
+    // autoChooser.addOption("Center Auto 3", defaultAuto("InitCenterToNote", "CenterToNote3"));
+    // autoChooser.addOption("Center Auto 4", defaultAuto("InitCenterToNote", "CenterToNote4"));
+    // autoChooser.addOption("Load Auto 5", defaultAuto("InitLoadToNote", "StageToNote5"));
 
     autoChooser.addOption(
-        "Three Notes Center",
+        "Center - Three Notes",
         Commands.sequence(
-            commands.setPose(FieldConstants.getInitialPose(FieldConstants.initialCenterSide)),
+            commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialCenter)),
             scoreInSpeakerAuto(),
-            driveThenIntake("C_N1", 4, false),
+            driveThenIntakeWithFallback("C_N1", FieldConstants.note1, 4),
             scoreInSpeakerAuto(),
-            driveThenIntake("N1_N2", 4, false),
+            driveThenIntakeWithFallback("N1_N2", FieldConstants.note2, 4),
             scoreInSpeakerAuto(),
-            driveThenIntake("N2_N3", 4, false),
+            driveThenIntakeWithFallback("N2_N3", FieldConstants.note3, 4),
             scoreInSpeakerAuto()));
 
     autoChooser.addOption(
-        "N1-CN2 Center",
+        "Center - Two Notes",
         Commands.sequence(
-                commands.setPose(FieldConstants.getInitialPose(FieldConstants.initialCenterSide)),
+            commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialCenter)),
+            scoreInSpeakerAuto(),
+            intakeWithFallback(FieldConstants.note2, 4),
+            scoreInSpeakerAuto(),
+            driveThenIntakeWithFallback("N2_N3", FieldConstants.note3, 4),
+            scoreInSpeakerAuto()));
+
+    autoChooser.addOption(
+        "Center - N1 + CN2",
+        Commands.sequence(
+                commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialCenter)),
                 scoreInSpeakerAuto(),
-                driveThenIntake("C_N1", 4, false),
+                driveThenIntakeWithFallback("C_N1", FieldConstants.note1, 4),
                 scoreInSpeakerAuto(),
-                driveThenIntake("N1_CN2", 4, false),
-                driveTrajectory("CN2_S", 3, false),
+                driveThenIntakeWithFallback("N1_CN2", FieldConstants.centralNote2, 4),
+                driveTrajectory("CN2_S", 3),
                 scoreInSpeakerAuto())
+            .until(() -> RobotState.getInstance().isOverCenterLine()));
+
+    autoChooser.addOption(
+        "Center - N2 + CN3",
+        Commands.sequence(
+                commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialCenter)),
+                scoreInSpeakerAuto(),
+                intakeWithFallback(FieldConstants.note2, 4),
+                scoreInSpeakerAuto(),
+                driveThenIntakeWithFallback("N2_CN3", FieldConstants.centralNote2, 4),
+                driveTrajectory("CN3_S", 3),
+                scoreInSpeakerAuto())
+            .until(() -> RobotState.getInstance().isOverCenterLine()));
+
+    autoChooser.addOption(
+        "Amp - N1 + CN2",
+        Commands.sequence(
+                commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialAmp)),
+                scoreInSpeakerAuto(),
+                driveThenIntakeWithFallback("A_N1", FieldConstants.note1, 4),
+                scoreInSpeakerAuto(),
+                driveThenIntakeWithFallback("N1_CN2", FieldConstants.centralNote2, 4),
+                driveTrajectory("CN2_S", 3),
+                scoreInSpeakerAuto())
+            .until(() -> RobotState.getInstance().isOverCenterLine()));
+
+    autoChooser.addOption(
+        "Load - CN4",
+        Commands.sequence(
+                commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialLoad)),
+                scoreInSpeakerAuto(),
+                driveThenIntakeWithFallback("L_CN4", FieldConstants.note1, 5),
+                driveTrajectory("CN4_S", 3),
+                scoreInSpeakerAuto())
+            .until(() -> RobotState.getInstance().isOverCenterLine()));
+
+    autoChooser.addOption(
+        "Load - CN5",
+        Commands.sequence(
+                commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialLoad)),
+                scoreInSpeakerAuto(),
+                driveThenIntakeWithFallback("L_CN5", FieldConstants.note1, 5),
+                driveTrajectory("CN5_S", 3),
+                scoreInSpeakerAuto())
+            .until(() -> RobotState.getInstance().isOverCenterLine()));
+
+    autoChooser.addOption(
+        "Load - Wreck",
+        Commands.sequence(
+                commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialLoad)),
+                scoreInSpeakerAuto(),
+                driveTrajectory("L_WRECK", 7))
             .until(() -> RobotState.getInstance().isOverCenterLine()));
 
     autoChooser.addOption(
@@ -355,9 +435,20 @@ public class RobotContainer {
                 () -> DriverStation.getAlliance().get() == Alliance.Blue));
 
     // intake
-    controllerDriver.leftTrigger().whileTrue(commands.intake());
+    // LT only -- regular intake
+    // LT + X -- intake with vision
+    // X only -- pass
+    controllerDriver.leftTrigger().and(controllerDriver.x().negate()).whileTrue(commands.intake());
+    controllerDriver
+        .leftTrigger()
+        .onFalse(commands.reindex().onlyIf(() -> shooter.isFrontBeamTripped()).withTimeout(2));
 
-    controllerDriver.leftTrigger().onFalse(commands.reindex().withTimeout(2));
+    controllerDriver
+        .leftTrigger()
+        .and(controllerDriver.x())
+        .whileTrue(commands.autoIntakeViaVision());
+
+    controllerDriver.x().and(controllerDriver.leftTrigger().negate()).onTrue(commands.pass());
 
     // eject
     controllerDriver.y().whileTrue(commands.eject());
@@ -413,9 +504,6 @@ public class RobotContainer {
     // climb commands
     controllerDriver.povUp().onTrue(commands.raiseHooks());
     controllerDriver.back().onTrue(commands.retractHooks());
-
-    // controllerDriver.povRight().onTrue(commands.wheelDiameterCharacterization());
-    controllerDriver.x().onTrue(commands.pass());
   }
 
   /** Use this method to put commands on the SmartDashboard. */

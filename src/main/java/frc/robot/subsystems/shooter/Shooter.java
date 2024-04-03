@@ -137,7 +137,7 @@ public class Shooter extends SubsystemBase {
 
   /** Stops shooter and feed. */
   public void stop() {
-    io.stopFeed();
+    stopFeed();
     io.stopFlywheel();
   }
 

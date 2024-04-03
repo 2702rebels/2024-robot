@@ -1,6 +1,7 @@
 package frc.robot.commands;
 
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.intake.Intake;
@@ -9,9 +10,11 @@ import frc.robot.subsystems.vision.NoteDetector;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 
-public class DriveToNoteNaive extends Command {
+public class DriveToNoteVision extends Command {
   private static final LoggedTunableNumber thetaTol =
       new LoggedTunableNumber("Drive/Note/Theta Tolerance", 2);
+  private static final LoggedTunableNumber velocityLinearTeleop =
+      new LoggedTunableNumber("Drive/Note/Velocity Teleop", 3);
   private static final LoggedTunableNumber velocityLinearSlow =
       new LoggedTunableNumber("Drive/Note/Velocity Slow", 0.75);
   private static final LoggedTunableNumber velocityLinearFast =
@@ -25,7 +28,7 @@ public class DriveToNoteNaive extends Command {
   private boolean directionLocked;
   private double desiredTheta;
 
-  public DriveToNoteNaive(Drive drive, NoteDetector detector, Intake intake, Shooter shooter) {
+  public DriveToNoteVision(Drive drive, NoteDetector detector, Intake intake, Shooter shooter) {
     this.drive = drive;
     this.detector = detector;
     this.intake = intake;
@@ -46,7 +49,7 @@ public class DriveToNoteNaive extends Command {
       desiredTheta = drive.getPose().getRotation().getRadians() - note.yaw().getRadians();
     }
 
-    System.out.println("TargetAcquired = " + targetAcquired);
+    System.out.println("DriveToNoteVision/TargetAcquired = " + targetAcquired);
   }
 
   @Override
@@ -59,16 +62,19 @@ public class DriveToNoteNaive extends Command {
     final var turnAngle = currentTheta - desiredTheta;
     drive.steeringLock(turnAngle);
 
-    Logger.recordOutput("DriveToNoteNaive/TurnAngle", turnAngle);
+    Logger.recordOutput("DriveToNoteVision/TurnAngle", turnAngle);
 
     // once the direction is locked disregard further theta readings
     if (Math.abs(turnAngle) < Math.toRadians(thetaTol.get())) {
       directionLocked = true;
     }
 
+    final var speedFast =
+        DriverStation.isTeleopEnabled() ? velocityLinearTeleop.get() : velocityLinearFast.get();
+
     final var vx =
-        directionLocked
-            ? intake.isBeamTripped() ? velocityLinearSlow.get() : velocityLinearFast.get()
+        directionLocked && !shooter.isFrontBeamTripped()
+            ? intake.isBeamTripped() ? velocityLinearSlow.get() : speedFast
             : 0;
 
     // steering is handled by the lock
@@ -77,8 +83,6 @@ public class DriveToNoteNaive extends Command {
 
   @Override
   public void end(boolean interrupted) {
-    System.out.println("DriveToNoteNaive ended, interrupted = " + interrupted);
-
     drive.steeringUnlock();
     drive.stop();
   }

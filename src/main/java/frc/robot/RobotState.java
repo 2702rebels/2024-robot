@@ -194,7 +194,7 @@ public class RobotState {
 
     final var x = getEstimatedPose().getTranslation().getX();
     final var r = DriveConstants.drivetrainConfig.driveBaseRadius();
-    final var cx = FieldConstants.fieldLengthMeters / 2;
+    final var cx = FieldConstants.fieldCenterMeters;
 
     return red ? x <= (cx - r) : x >= (cx + r);
   }
