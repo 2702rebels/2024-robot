@@ -26,6 +26,7 @@ public class ScoreInSpeaker extends Command {
   private final AprilTagDetector aprilTagDetector;
   private final RobotState state;
   private AprilTag tag;
+  private AprilTag virtualTag;
   private boolean goodToShoot = false;
 
   public ScoreInSpeaker(
@@ -43,6 +44,8 @@ public class ScoreInSpeaker extends Command {
   public void initialize() {
     // get the tag we need to be scoring on
     tag = aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 4 : 7);
+    virtualTag =
+        aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 17 : 18);
     goodToShoot = false;
   }
 
@@ -50,8 +53,8 @@ public class ScoreInSpeaker extends Command {
   public void execute() {
     final var timestamp = Timer.getFPGATimestamp();
 
-    var z = tag.z;
-    var x = tag.x;
+    var z = virtualTag.tracked ? virtualTag.z : tag.z;
+    var x = virtualTag.tracked ? virtualTag.x : tag.x;
 
     // if we have historical poses, use them to correct the vector
     // based on the difference between current and historic poses
@@ -83,7 +86,7 @@ public class ScoreInSpeaker extends Command {
     Logger.recordOutput("TrackedShooting/Tag1Dist", distToTag1);
 
     // -2.2m -- target height over ground
-    final var pivotAngle = Math.toDegrees(Math.atan2(-2.2, distToTag1));
+    final var pivotAngle = Math.toDegrees(Math.atan2(-2.0, distToTag1));
     Logger.recordOutput("TrackedShooting/PivotAngle", pivotAngle);
 
     final var turnAngle = Math.atan2(x, z);
@@ -95,8 +98,8 @@ public class ScoreInSpeaker extends Command {
     //      x1-x0
     final var maxDist = 7.0;
     final var minDist = 2.0;
-    final var maxSpeed = 4000;
-    final var minSpeed = 2500;
+    final var maxSpeed = 4500;
+    final var minSpeed = 2700;
     final var lerpSpeed =
         (minSpeed * (maxDist - distToTag1) + maxSpeed * (distToTag1 - minDist))
             / (maxDist - minDist);
