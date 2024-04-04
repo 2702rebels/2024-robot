@@ -197,6 +197,16 @@ public class RobotContainer {
         .withTimeout(timeoutSeconds);
   }
 
+  /**
+   * Repositions the robot slightly away from the stage pillar to allow the shot to go through,
+   * since the pillar often prevents the robot to complete necessary rotation to target.
+   */
+  private Command driveToPodiumShot() {
+    return commands
+        .driveToPose(FieldConstants.getFieldPose(FieldConstants.podiumShot), true, null)
+        .withTimeout(1.5);
+  }
+
   private Command driveTrajectory(String trajectoryName, double timeoutSeconds) {
     return new DriveTrajectory(trajectories.get(trajectoryName), false, true, drive)
         .withTimeout(timeoutSeconds);
@@ -299,6 +309,7 @@ public class RobotContainer {
             driveThenIntakeWithFallback("N1_N2", FieldConstants.note2, 4),
             scoreInSpeakerAuto(),
             driveThenIntakeWithFallback("N2_N3", FieldConstants.note3, 4),
+            driveToPodiumShot(),
             scoreInSpeakerAuto()));
 
     autoChooser.addOption(
@@ -309,6 +320,7 @@ public class RobotContainer {
             intakeWithFallback(FieldConstants.note2, 4),
             scoreInSpeakerAuto(),
             driveThenIntakeWithFallback("N2_N3", FieldConstants.note3, 4),
+            driveToPodiumShot(),
             scoreInSpeakerAuto()));
 
     autoChooser.addOption(

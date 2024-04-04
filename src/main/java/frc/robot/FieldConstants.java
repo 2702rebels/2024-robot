@@ -34,6 +34,8 @@ public final class FieldConstants {
   public static final Pose2d initialCenter = new Pose2d(1.383, 5.576, Rotation2d.fromDegrees(0));
   public static final Pose2d initialLoad = new Pose2d(1.3, 4.1, Rotation2d.fromDegrees(-60));
 
+  public static final Pose2d podiumShot = new Pose2d(2.3, 4.4, Rotation2d.fromDegrees(-27));
+
   public static final Pose2d note1 = new Pose2d(2.89, 7.019, Rotation2d.fromDegrees(30));
   public static final Pose2d note2 = new Pose2d(2.89, 5.56, Rotation2d.fromDegrees(0));
   public static final Pose2d note3 = new Pose2d(2.89, 4.11, Rotation2d.fromDegrees(-30));
