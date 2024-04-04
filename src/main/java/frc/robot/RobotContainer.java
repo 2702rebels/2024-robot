@@ -514,8 +514,8 @@ public class RobotContainer {
     controllerDriver.povLeft().whileTrue(commands.reindex().withTimeout(2));
 
     // climb commands
-    controllerDriver.povUp().onTrue(commands.raiseHooks());
-    controllerDriver.back().onTrue(commands.retractHooks());
+    controllerDriver.povUp().onTrue(commands.raiseHooks().withTimeout(5));
+    controllerDriver.back().onTrue(commands.retractHooks().withTimeout(2));
   }
 
   /** Use this method to put commands on the SmartDashboard. */
