@@ -361,9 +361,8 @@ public class CommandsFactory {
   }
 
   public Command pass() {
-    return moveArmToPosition(20)
-        .alongWith(Commands.runOnce(() -> shooter.percentFlywheel(0.2), shooter))
-        .andThen(Commands.runOnce(() -> shooter.feedForward(), shooter))
+    return moveArmToPosition(15)
+        .alongWith(shoot(1000, () -> pivot.isAtGoal()))
         .until(() -> !shooter.hasGamePiece())
         .andThen(Commands.runOnce(() -> shooter.stop()));
   }
