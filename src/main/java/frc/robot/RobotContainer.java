@@ -5,7 +5,6 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.XboxController;
@@ -429,22 +428,24 @@ public class RobotContainer {
                 .ignoringDisable(true)
                 .withName("ResetOdometry"));
 
-    // orientation locks
-    controllerDriver
-        .leftBumper()
-        .onTrue(
-            Commands.either(
-                Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(90))),
-                Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(-90))),
-                () -> DriverStation.getAlliance().get() == Alliance.Blue));
+    // // orientation locks
+    // controllerDriver
+    //     .leftBumper()
+    //     .onTrue(
+    //         Commands.either(
+    //             Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(90))),
+    //             Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(-90))),
+    //             () -> DriverStation.getAlliance().get() == Alliance.Blue));
 
-    controllerDriver
-        .rightBumper()
-        .onTrue(
-            Commands.either(
-                Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(-45))),
-                Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(45))),
-                () -> DriverStation.getAlliance().get() == Alliance.Blue));
+    // controllerDriver
+    //     .rightBumper()
+    //     .onTrue(
+    //         Commands.either(
+    //             Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(-45))),
+    //             Commands.runOnce(() -> drive.toggleOrientationLock(Math.toRadians(45))),
+    //             () -> DriverStation.getAlliance().get() == Alliance.Blue));
+
+    controllerDriver.rightBumper().onTrue(commands.pass());
 
     // intake
     // LT only -- regular intake
@@ -511,7 +512,7 @@ public class RobotContainer {
             Commands.parallel(
                 commands.moveArmToPosition(20), Commands.runOnce(shooter::stop, shooter)));
 
-    controllerDriver.povLeft().whileTrue(commands.reindex().withTimeout(2));
+    controllerDriver.povLeft().onTrue(commands.reindex().withTimeout(2));
 
     // climb commands
     controllerDriver.povUp().onTrue(commands.raiseHooks().withTimeout(5));

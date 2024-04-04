@@ -127,7 +127,11 @@ public class Shooter extends SubsystemBase {
   }
 
   public void feedForward() {
-    io.setFeedPercentOutput(0.3);
+    feedForward(0.3);
+  }
+
+  public void feedForward(double percent) {
+    io.setFeedPercentOutput(0.2);
     feeding = true;
   }
 
@@ -150,5 +154,9 @@ public class Shooter extends SubsystemBase {
   /** Runs flywheel in reverse to keep notes from popping out. */
   public void reverseFlywheel() {
     io.setFlywheelPercentOutput(reverseSpeed.get());
+  }
+
+  public void percentFlywheel(double percent) {
+    io.setFlywheelPercentOutput(percent);
   }
 }

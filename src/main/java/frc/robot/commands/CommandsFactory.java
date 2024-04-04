@@ -230,6 +230,12 @@ public class CommandsFactory {
         .withName("FeedIn");
   }
 
+  public Command feedInSlow() {
+    return new StartEndCommand(() -> shooter.feedForward(0.2), shooter::stopFeed, shooter)
+        .until(shooter::isFrontBeamTripped)
+        .withName("FeedInSlow");
+  }
+
   /** Commands shooter to reindex the game piece. */
   public Command reindex() {
     return new FunctionalCommand(
@@ -241,7 +247,7 @@ public class CommandsFactory {
             (interrupted) -> shooter.stop(),
             () -> !shooter.isFrontBeamTripped(),
             shooter)
-        .andThen(feedIn())
+        .andThen(feedInSlow())
         .withName("Reindex");
   }
 
@@ -356,7 +362,8 @@ public class CommandsFactory {
 
   public Command pass() {
     return moveArmToPosition(20)
-        .andThen(shoot(1000, () -> pivot.isAtGoal()))
+        .alongWith(Commands.runOnce(() -> shooter.percentFlywheel(0.2), shooter))
+        .andThen(Commands.runOnce(() -> shooter.feedForward(), shooter))
         .until(() -> !shooter.hasGamePiece())
         .andThen(Commands.runOnce(() -> shooter.stop()));
   }
