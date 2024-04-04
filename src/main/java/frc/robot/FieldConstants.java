@@ -30,9 +30,9 @@ public final class FieldConstants {
 
   // in meters (blue alliance wall)
   // spotless:off
-  public static final Pose2d initialAmp = new Pose2d(1.3, 7.02, Rotation2d.fromDegrees(60));
+  public static final Pose2d initialAmp = new Pose2d(0.785, 6.711, Rotation2d.fromDegrees(60));
   public static final Pose2d initialCenter = new Pose2d(1.383, 5.576, Rotation2d.fromDegrees(0));
-  public static final Pose2d initialLoad = new Pose2d(1.3, 4.1, Rotation2d.fromDegrees(-60));
+  public static final Pose2d initialLoad = new Pose2d(0.809, 4.416, Rotation2d.fromDegrees(-60));
 
   public static final Pose2d podiumShot = new Pose2d(2.3, 4.4, Rotation2d.fromDegrees(-27));
 
