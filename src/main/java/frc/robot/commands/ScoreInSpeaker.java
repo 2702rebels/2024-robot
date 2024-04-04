@@ -99,7 +99,7 @@ public class ScoreInSpeaker extends Command {
     final var maxDist = 7.0;
     final var minDist = 2.0;
     final var maxSpeed = 4500;
-    final var minSpeed = 2700;
+    final var minSpeed = 2702;
     final var lerpSpeed =
         (minSpeed * (maxDist - distToTag1) + maxSpeed * (distToTag1 - minDist))
             / (maxDist - minDist);
