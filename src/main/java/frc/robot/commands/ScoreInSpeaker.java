@@ -108,7 +108,7 @@ public class ScoreInSpeaker extends Command {
     Logger.recordOutput("TrackedShooting/Tag1Dist", distToTag1);
 
     // -2.2m -- target height over ground
-    final var pivotAngle = Math.toDegrees(Math.atan2(-2.0, distToTag1));
+    final var pivotAngle = Math.abs(Math.toDegrees(Math.atan2(-2.0, distToTag1)));
     Logger.recordOutput("TrackedShooting/PivotAngle", pivotAngle);
 
     final var turnAngle = Math.atan2(x, z);
@@ -135,7 +135,7 @@ public class ScoreInSpeaker extends Command {
 
     if (targetAcquired) {
       drive.steeringLock(turnAngle);
-      pivot.setRequestedAngle(-pivotAngle);
+      pivot.setRequestedAngle(pivotAngle);
       shooter.setSpeed(lerpSpeed);
 
       if (pivot.isAtGoal()
