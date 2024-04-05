@@ -12,12 +12,15 @@ import frc.robot.subsystems.pivot.Pivot;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.vision.AprilTag;
 import frc.robot.subsystems.vision.AprilTagDetector;
+import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardBoolean;
 
 public class ScoreInSpeaker extends Command {
   // spotless:off
   private static final LoggedDashboardBoolean disableOdometryHistory = new LoggedDashboardBoolean("Score/DisableOdometryHistory", false);
+  private static final LoggedTunableNumber virtualTagToleranceAuto = new LoggedTunableNumber("Score/VTag Tolerance Auto", 0.5);
+  private static final LoggedTunableNumber virtualTagToleranceTeleop = new LoggedTunableNumber("Score/VTag Tolerance Teleop", 0.2);
   // spotless:on
 
   private final Drive drive;
@@ -28,6 +31,8 @@ public class ScoreInSpeaker extends Command {
   private AprilTag tag;
   private AprilTag virtualTag;
   private boolean goodToShoot = false;
+  private double lastSeenVirtualTagAt;
+  private double virtualTagTolerance;
 
   public ScoreInSpeaker(
       Drive drive, Shooter shooter, Pivot pivot, AprilTagDetector aprilTagDetector) {
@@ -47,19 +52,36 @@ public class ScoreInSpeaker extends Command {
     virtualTag =
         aprilTagDetector.getTag(DriverStation.getAlliance().get() == Alliance.Red ? 17 : 18);
     goodToShoot = false;
+
+    virtualTagTolerance =
+        DriverStation.isAutonomous()
+            ? virtualTagToleranceAuto.get()
+            : virtualTagToleranceTeleop.get();
   }
 
   @Override
   public void execute() {
     final var timestamp = Timer.getFPGATimestamp();
 
-    var z = virtualTag.tracked ? virtualTag.z : tag.z;
-    var x = virtualTag.tracked ? virtualTag.x : tag.x;
+    var preferredTag =
+        timestamp - lastSeenVirtualTagAt < virtualTagTolerance
+            ? virtualTag
+            : virtualTag.tracked ? virtualTag : tag;
+
+    if (virtualTag.tracked) {
+      lastSeenVirtualTagAt = timestamp;
+    }
+
+    var z = preferredTag.z;
+    var x = preferredTag.x;
+
+    final var epoch = RobotState.getInstance().autoStartedAt;
+    final var tagTimestamp = preferredTag.timestamp;
 
     // if we have historical poses, use them to correct the vector
     // based on the difference between current and historic poses
-    if (state.hasSampledPoses()) {
-      final var poseThen = state.findPoseAt(tag.timestamp);
+    if (tagTimestamp > epoch && state.hasSampledPoses()) {
+      final var poseThen = state.findPoseAt(tagTimestamp);
       final var poseNow = state.findPoseAt(timestamp);
       final var translationThen = poseThen.getTranslation();
       final var translationNow = poseNow.getTranslation();
@@ -108,7 +130,8 @@ public class ScoreInSpeaker extends Command {
     // consider tag acquired if we see one or we have seen it within the last 2 seconds
     // so that we can use recent odometry compensation to steer us towards it
     final var targetAcquired =
-        tag.tracked || (timestamp - tag.timestamp) < 2 && !disableOdometryHistory.get();
+        preferredTag.tracked
+            || (timestamp - preferredTag.timestamp) < 2 && !disableOdometryHistory.get();
 
     if (targetAcquired) {
       drive.steeringLock(turnAngle);
@@ -126,6 +149,7 @@ public class ScoreInSpeaker extends Command {
     } else {
       drive.steeringUnlock();
     }
+
     Logger.recordOutput("TrackedShooting/GoodToShoot", goodToShoot);
 
     // runs active steering if needed in autonomous mode

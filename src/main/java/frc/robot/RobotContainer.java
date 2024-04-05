@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -213,7 +214,7 @@ public class RobotContainer {
 
   /** Creates a wrapper with timeout for safety during auto. */
   private Command scoreInSpeakerAuto() {
-    return commands.scoreInSpeaker().withTimeout(3);
+    return commands.scoreInSpeaker().withTimeout(4);
   }
 
   // private Command defaultAuto(String trajectory1, String trajectory2) {
@@ -619,6 +620,10 @@ public class RobotContainer {
   }
 
   public void onAutoInit() {
+    final var timestamp = Timer.getFPGATimestamp();
+    RobotState.getInstance().autoStartedAt = timestamp;
+    System.out.println("Started autonomous at: " + timestamp);
+
     // start shooter with flywheel in break mode to use in autonomous
     // as a fix for notes popping right through the shooter during intake
     shooter.setFlywheelBrakeMode(true);

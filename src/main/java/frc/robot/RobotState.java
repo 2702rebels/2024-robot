@@ -69,6 +69,9 @@ public class RobotState {
         DriveConstants.drivetrainConfig.turnMotorMaxAngularSpeed() * deltaOverflowFactor;
   }
 
+  /** Timestamp when auto mode started. */
+  public double autoStartedAt;
+
   /** Adds new odometry observation and updates robot pose. */
   public void addOdometryObservation(
       SwerveDriveWheelPositions wheelPositions, Rotation2d gyroAngle, double timestamp) {
