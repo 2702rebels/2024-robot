@@ -17,11 +17,12 @@ public class Shooter extends SubsystemBase {
   private static final LoggedTunableNumber kP  = new LoggedTunableNumber("Shooter/Flywheel P", 0.0002);
   private static final LoggedTunableNumber kI  = new LoggedTunableNumber("Shooter/Flywheel I", 0.0);
   private static final LoggedTunableNumber kD  = new LoggedTunableNumber("Shooter/Flywheel D", 0.0);
-  private static final LoggedTunableNumber kFF = new LoggedTunableNumber("Shooter/Flywheel FF", 0.00020);
+  private static final LoggedTunableNumber kFF = new LoggedTunableNumber("Shooter/Flywheel FF", 0.00020); // 0.000183
   private static final LoggedTunableNumber kS  = new LoggedTunableNumber("Shooter/Flywheel kS", 0.2265);
   private static final LoggedTunableNumber atSpeedAllowance = new LoggedTunableNumber("Shooter/AtSpeedAllowance", 60);
   private static final LoggedTunableNumber reverseSpeed = new LoggedTunableNumber("Shooter/Reverse Speed", -0.2);
   private static final LoggedTunableNumber shooterSpeedFactor = new LoggedTunableNumber("Shooter/SpeedFactor", 1.0);
+  private static final LoggedTunableNumber feedSpeedOutput = new LoggedTunableNumber("Shooter/Feed Speed Output", 0.3);
   // spotless:on
 
   private final SysIdRoutine sysId;
@@ -119,7 +120,7 @@ public class Shooter extends SubsystemBase {
   }
 
   public void feedOut() {
-    io.setFeedPercentOutput(0.7);
+    io.setFeedPercentOutput(feedSpeedOutput.get());
   }
 
   public void feedReverse() {

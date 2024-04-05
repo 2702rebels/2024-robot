@@ -146,7 +146,8 @@ public class ShooterIOSparkMax implements ShooterIO {
 
   @Override
   public void setFlywheelSpeed(double rpm) {
-    flywheelPID.setReference(rpm, ControlType.kVelocity);
+    final var ff = 0.2265; // + rpm * 0.0022
+    flywheelPID.setReference(rpm, ControlType.kVelocity, 0, ff);
   }
 
   @Override
@@ -169,8 +170,7 @@ public class ShooterIOSparkMax implements ShooterIO {
 
   @Override
   public void setFeedSpeed(double rpm) {
-    final var ff = 0.2265; // + rpm * 0.0022
-    feedPID.setReference(rpm, ControlType.kVelocity, 0, ff);
+    feedPID.setReference(rpm, ControlType.kVelocity);
   }
 
   @Override
