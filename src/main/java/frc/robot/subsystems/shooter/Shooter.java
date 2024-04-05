@@ -19,7 +19,7 @@ public class Shooter extends SubsystemBase {
   private static final LoggedTunableNumber kD  = new LoggedTunableNumber("Shooter/Flywheel D", 0.0);
   private static final LoggedTunableNumber kFF = new LoggedTunableNumber("Shooter/Flywheel FF", 0.00020);
   private static final LoggedTunableNumber kS  = new LoggedTunableNumber("Shooter/Flywheel kS", 0.2265);
-  private static final LoggedTunableNumber atSpeedAllowance = new LoggedTunableNumber("Shooter/AtSpeedAllowance", 50);
+  private static final LoggedTunableNumber atSpeedAllowance = new LoggedTunableNumber("Shooter/AtSpeedAllowance", 60);
   private static final LoggedTunableNumber reverseSpeed = new LoggedTunableNumber("Shooter/Reverse Speed", -0.2);
   private static final LoggedTunableNumber shooterSpeedFactor = new LoggedTunableNumber("Shooter/SpeedFactor", 1.0);
   // spotless:on
