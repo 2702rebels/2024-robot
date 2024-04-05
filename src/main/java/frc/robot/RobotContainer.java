@@ -312,6 +312,19 @@ public class RobotContainer {
             scoreInSpeakerAuto()));
 
     autoChooser.addOption(
+        "Center - Three Notes",
+        Commands.sequence(
+            commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialCenter)),
+            scoreInSpeakerAuto(),
+            driveThenIntakeWithFallback("C_N1", FieldConstants.note1, 4),
+            scoreInSpeakerAuto(),
+            driveThenIntakeWithFallback("N1_N2", FieldConstants.note2, 4),
+            scoreInSpeakerAuto(),
+            driveThenIntakeWithFallback("N2_N3", FieldConstants.note3, 4),
+            driveToPodiumShot(),
+            scoreInSpeakerAuto()));
+
+    autoChooser.addOption(
         "Center - Two Notes",
         Commands.sequence(
             commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialCenter)),
@@ -365,6 +378,16 @@ public class RobotContainer {
                 scoreInSpeakerAuto(),
                 driveThenIntakeWithFallback("L_CN4", FieldConstants.note1, 5),
                 driveTrajectory("CN4_S", 3),
+                scoreInSpeakerAuto())
+            .until(() -> RobotState.getInstance().isOverCenterLine()));
+
+    autoChooser.addOption(
+        "Load - N3 -OPDAVE",
+        Commands.sequence(
+                commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialLoad)),
+                scoreInSpeakerAuto(),
+                driveThenIntakeWithFallback("L_N3", FieldConstants.note1, 3),
+                driveTrajectory("N3_L", 3),
                 scoreInSpeakerAuto())
             .until(() -> RobotState.getInstance().isOverCenterLine()));
 
