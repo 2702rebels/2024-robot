@@ -377,7 +377,7 @@ public class RobotContainer {
         Commands.sequence(
                 commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialLoad)),
                 scoreInSpeakerAuto(),
-                driveThenIntakeWithFallback("L_CN4", FieldConstants.note1, 5),
+                driveThenIntakeWithFallback("L_CN4", FieldConstants.centralNote4, 5),
                 driveTrajectory("CN4_S", 3),
                 scoreInSpeakerAuto())
             .until(() -> RobotState.getInstance().isOverCenterLine()));
@@ -397,7 +397,7 @@ public class RobotContainer {
         Commands.sequence(
                 commands.setPose(FieldConstants.getFieldPose(FieldConstants.initialLoad)),
                 scoreInSpeakerAuto(),
-                driveThenIntakeWithFallback("L_CN5", FieldConstants.note1, 5),
+                driveThenIntakeWithFallback("L_CN5", FieldConstants.centralNote5, 5),
                 driveTrajectory("CN5_S", 3),
                 scoreInSpeakerAuto())
             .until(() -> RobotState.getInstance().isOverCenterLine()));
