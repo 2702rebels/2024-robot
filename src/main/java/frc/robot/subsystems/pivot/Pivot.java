@@ -91,9 +91,7 @@ public class Pivot extends SubsystemBase {
     final var ff = armFeedforward.calculate(state.position, state.velocity);
 
     Pose3d pose3d =
-        new Pose3d(
-            PIVOT_POSE_OFFSET,
-            new Rotation3d(0, inputs.measuredPositionRadians, 0));
+        new Pose3d(PIVOT_POSE_OFFSET, new Rotation3d(0, inputs.measuredPositionRadians, 0));
 
     Logger.recordOutput("Pivot/RequestedPosition", requestedPosInDeg);
     Logger.recordOutput("Pivot/StatePosition", state.position);
