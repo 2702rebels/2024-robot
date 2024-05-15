@@ -1,0 +1,35 @@
+{
+    "name": "Chester",
+    "rotations": [
+      {
+        "axis": "x",
+        "degrees": 180
+      },
+      {
+        "axis": "z",
+        "degrees": 90
+      }
+    ],
+    "position": [
+      0,0,0
+    ],
+    "components": [
+      {
+        "zeroedRotations": [
+          {
+            "axis": "x",
+            "degrees": 180
+          },
+          {
+            "axis": "z",
+            "degrees": 0
+          }
+        ],
+        "zeroedPosition": [
+          -0.112,
+          0.025,
+          0.063
+        ]
+      }
+    ]
+  }

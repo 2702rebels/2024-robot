@@ -5,7 +5,7 @@ public final class Constants {
   public static final boolean tuningMode = true;
 
   /** Robot code operation mode */
-  public static final Mode currentMode = Mode.REAL;
+  public static final Mode currentMode = Mode.REPLAY;
 
   public static enum Mode {
     /** Running on a real robot */

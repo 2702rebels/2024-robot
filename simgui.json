@@ -1,0 +1,15 @@
+{
+  "NTProvider": {
+    "types": {
+      "/FMSInfo": "FMSInfo",
+      "/SmartDashboard/Auto Choices": "String Chooser",
+      "/SmartDashboard/Climb/Engage Ratchet": "Command",
+      "/SmartDashboard/Climb/Home": "Command",
+      "/SmartDashboard/Climb/Release Ratchet": "Command",
+      "/SmartDashboard/Trap/Shoot": "Command"
+    }
+  },
+  "NetworkTables Info": {
+    "visible": true
+  }
+}

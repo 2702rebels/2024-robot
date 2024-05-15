@@ -2,6 +2,9 @@ package frc.robot.subsystems.pivot;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ArmFeedforward;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -12,6 +15,8 @@ import org.littletonrobotics.junction.Logger;
 public class Pivot extends SubsystemBase {
   private final PivotIO io;
   private final PivotIOInputsAutoLogged inputs = new PivotIOInputsAutoLogged();
+
+  private static final Translation3d PIVOT_POSE_OFFSET = new Translation3d(0.1778, 0.0, 0.2032);
 
   // spotless:off
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Pivot/Motor P", 1.0);
@@ -85,12 +90,18 @@ public class Pivot extends SubsystemBase {
     state = trapezoidProfile.calculate(Constants.cyclePeriodSeconds, state, goal);
     final var ff = armFeedforward.calculate(state.position, state.velocity);
 
+    Pose3d pose3d =
+        new Pose3d(
+            PIVOT_POSE_OFFSET,
+            new Rotation3d(0, inputs.measuredPositionRadians, 0));
+
     Logger.recordOutput("Pivot/RequestedPosition", requestedPosInDeg);
     Logger.recordOutput("Pivot/StatePosition", state.position);
     Logger.recordOutput("Pivot/StateVelocity", state.velocity);
     Logger.recordOutput("Pivot/ArmFeedForward", ff);
     Logger.recordOutput("Pivot/PositionRadians", inputs.measuredPositionRadians);
     Logger.recordOutput("Pivot/PositionAngle", Math.toDegrees(inputs.measuredPositionRadians));
+    Logger.recordOutput("Pivot/Mechanism3d", pose3d);
 
     if (enabled) {
       io.setJointAngle(state.position, ff);
